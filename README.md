@@ -34,9 +34,20 @@ ADMIN_PASSWORD=우리비번 ROOM_NAMES="101호,102호,201호,202호" BASE_URL=ht
 
 ## 배포
 
-손님 휴대폰에서 접속해야 하므로 인터넷에 공개된 서버가 필요합니다.
-Railway, Render, Fly.io 같은 서비스에 이 폴더를 올리고 `npm start`로 실행하면 됩니다.
-배포 후 받은 주소를 `BASE_URL`에 넣고 `/admin/qr`에서 QR을 인쇄하세요.
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sukang-commits/room-chat)
+
+1. 위 버튼을 누르고 Render에 로그인(GitHub 계정으로 가능)합니다.
+2. `render.yaml`이 자동으로 읽혀 서비스·영구 디스크·비밀번호가 설정됩니다. "Apply"를 누릅니다.
+3. 배포가 끝나면 `https://room-chat-xxxx.onrender.com` 형태의 주소가 나옵니다.
+4. Render 대시보드 > room-chat > Environment 에서
+   - `ADMIN_PASSWORD` 값을 확인(자동 생성됨)하거나 원하는 비밀번호로 바꾸고
+   - `BASE_URL`에 위 주소를 추가합니다. (QR에 들어갈 주소)
+   - 방 이름을 바꾸려면 `ROOM_NAMES`를 추가합니다. 예: `101호,102호,201호`
+5. `https://받은주소/admin/qr` 에서 QR을 인쇄해 각 방에 붙입니다.
+
+Starter 플랜(월 7달러)이 기본입니다. 무료 플랜은 영구 디스크가 없고 15분 미사용 시 잠들어 손님이 QR을 찍었을 때 수십 초를 기다려야 하므로 권장하지 않습니다.
+
+Railway를 쓰려면 railway.app > New Project > Deploy from GitHub repo 에서 이 저장소를 고르면 됩니다(`Dockerfile`, `railway.json` 자동 인식). Volumes에서 `/data` 경로로 볼륨을 붙이세요.
 
 대화 기록은 `data/messages.json`에 저장됩니다. 서버가 재시작돼도 유지되며,
 직원 화면의 "대화 비우기 (퇴실)" 버튼으로 방별로 지울 수 있습니다.
