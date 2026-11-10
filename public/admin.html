@@ -13,6 +13,8 @@
   .topbar .total { background: var(--badge); }
   .layout { flex: 1; display: flex; min-height: 0; }
   .sidebar { width: 300px; background: var(--card); border-right: 1px solid var(--line); overflow-y: auto; }
+  .search { position: sticky; top: 0; background: var(--card); padding: 8px 10px; border-bottom: 1px solid var(--line); z-index: 1; }
+  .search input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; outline: none; }
   .room { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
   .room:hover { background: #f9fafb; }
   .room.active { background: #eff6ff; }
@@ -47,7 +49,10 @@
 </header>
 
 <div class="layout" id="layout">
-  <aside class="sidebar" id="rooms"></aside>
+  <aside class="sidebar">
+    <div class="search"><input id="search" placeholder="방 번호 검색" inputmode="numeric" autocomplete="off"></div>
+    <div id="rooms"></div>
+  </aside>
 
   <section class="panel">
     <div class="placeholder" id="placeholder">왼쪽에서 방을 선택하세요.<br>손님이 메시지를 보내면 방 번호가 파란색으로 바뀌고 알림음이 울립니다.</div>
@@ -110,8 +115,11 @@
   function renderRooms() {
     $rooms.innerHTML = '';
     let total = 0;
-    rooms.forEach((r) => {
-      total += r.unread;
+    const q = document.getElementById('search').value.trim();
+    const sorted = [...rooms].sort((a, b) =>
+      (b.unread > 0) - (a.unread > 0) || ((b.last && b.last.at) || 0) - ((a.last && a.last.at) || 0) || Number(a.id) - Number(b.id));
+    rooms.forEach((r) => { total += r.unread; });
+    sorted.filter((r) => !q || r.name.includes(q)).forEach((r) => {
       const div = document.createElement('div');
       div.className = 'room' + (r.unread ? ' unread' : '') + (r.id === current ? ' active' : '');
       div.innerHTML = `
@@ -127,6 +135,7 @@
       div.onclick = () => open(r.id);
       $rooms.appendChild(div);
     });
+    document.getElementById('search').oninput = renderRooms;
     $total.hidden = !total;
     $total.textContent = total;
     document.title = (total ? `(${total}) ` : '') + '직원 채팅 관리';

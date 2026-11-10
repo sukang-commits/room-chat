@@ -9,7 +9,7 @@ const QRCode = require('qrcode');
 // ---------- 설정 (환경변수로 변경 가능) ----------
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1234';          // 직원 화면 비밀번호
-const ROOM_COUNT = parseInt(process.env.ROOM_COUNT || '10', 10);      // 방 개수 (1번방 ~ N번방)
+const ROOM_COUNT = parseInt(process.env.ROOM_COUNT || '40', 10);      // 방 개수 (1번방 ~ N번방)
 const ROOM_NAMES = process.env.ROOM_NAMES                              // 직접 이름 지정 시: "101호,102호,201호"
   ? process.env.ROOM_NAMES.split(',').map((s) => s.trim()).filter(Boolean)
   : null;

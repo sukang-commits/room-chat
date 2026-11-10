@@ -20,8 +20,13 @@
   @media print {
     body { background: #fff; padding: 0; }
     .bar { display: none; }
-    .grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
-    .card { border: 1px dashed #999; border-radius: 0; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .card { border: 1px dashed #999; border-radius: 0; padding: 14px 10px; }
+    .card h2 { font-size: 24px; }
+    .card p { font-size: 12px; margin-bottom: 6px; }
+    .card img { max-width: 170px; }
+    .card .link { display: none; }
+    @page { size: A4; margin: 10mm; }
   }
 </style>
 </head>

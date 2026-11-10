@@ -16,6 +16,6 @@ services:
       - key: DATA_DIR
         value: /data
       - key: ROOM_COUNT
-        value: "10"
+        value: "40"
       - key: ADMIN_PASSWORD
         generateValue: true   # Render가 안전한 비밀번호를 만들어 줌. 대시보드에서 확인/변경

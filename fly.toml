@@ -5,7 +5,7 @@ primary_region = "nrt"
 
 [env]
   DATA_DIR = "/data"
-  ROOM_COUNT = "10"
+  ROOM_COUNT = "40"
 
 [http_service]
   internal_port = 3000
