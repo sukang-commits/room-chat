@@ -1,0 +1,20 @@
+# Render.com 에서 "New > Blueprint" 로 이 저장소를 고르면 자동 설정됩니다
+services:
+  - type: web
+    name: room-chat
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/rooms
+    disk:
+      name: room-chat-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: ROOM_COUNT
+        value: "10"
+      - key: ADMIN_PASSWORD
+        generateValue: true   # Render가 안전한 비밀번호를 만들어 줌. 대시보드에서 확인/변경

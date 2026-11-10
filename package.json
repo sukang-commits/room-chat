@@ -1,0 +1,20 @@
+{
+  "name": "room-chat",
+  "version": "1.0.0",
+  "description": "방별 QR 손님-직원 실시간 채팅",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.3.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

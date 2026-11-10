@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>직원 채팅 관리</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  body { height: 100dvh; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #111827; color: #fff; }
+  .topbar h1 { font-size: 16px; margin: 0; flex: 1; }
+  .topbar a, .topbar button { color: #fff; background: #374151; border: 0; border-radius: 8px; padding: 7px 12px; font-size: 13px; text-decoration: none; }
+  .topbar .total { background: var(--badge); }
+  .layout { flex: 1; display: flex; min-height: 0; }
+  .sidebar { width: 300px; background: var(--card); border-right: 1px solid var(--line); overflow-y: auto; }
+  .room { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .room:hover { background: #f9fafb; }
+  .room.active { background: #eff6ff; }
+  .room .num { width: 44px; height: 44px; border-radius: 12px; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; text-align: center; line-height: 1.1; }
+  .room.unread .num { background: var(--accent); color: #fff; }
+  .room .info { flex: 1; min-width: 0; }
+  .room .name { font-weight: 600; font-size: 15px; display: flex; justify-content: space-between; }
+  .room .name time { font-weight: 400; font-size: 12px; color: var(--muted); }
+  .room .preview { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .room.unread .preview { color: var(--text); font-weight: 500; }
+  .panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .panel .chat-header .back { display: none; border: 0; background: none; font-size: 20px; padding: 0 6px 0 0; }
+  .panel .chat-header .clear { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 10px; font-size: 13px; color: var(--muted); }
+  .msg.them { background: #fff; }
+  .msg.me { background: var(--accent); }
+  .placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 15px; text-align: center; line-height: 1.7; }
+  @media (max-width: 700px) {
+    .sidebar { width: 100%; }
+    .panel { display: none; }
+    .layout.open .sidebar { display: none; }
+    .layout.open .panel { display: flex; }
+    .panel .chat-header .back { display: inline-block; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1>직원 채팅 관리</h1>
+  <span class="badge total" id="total" hidden>0</span>
+  <button id="soundBtn" title="알림음 켜기/끄기">🔔 알림음 켜짐</button>
+  <a href="/admin/qr" target="_blank">QR 인쇄</a>
+</header>
+
+<div class="layout" id="layout">
+  <aside class="sidebar" id="rooms"></aside>
+
+  <section class="panel">
+    <div class="placeholder" id="placeholder">왼쪽에서 방을 선택하세요.<br>손님이 메시지를 보내면 방 번호가 파란색으로 바뀌고 알림음이 울립니다.</div>
+    <div class="chat" id="chat" hidden>
+      <header class="chat-header">
+        <button class="back" id="back" aria-label="목록으로">‹</button>
+        <h1 id="roomTitle"></h1>
+        <button class="clear" id="clearBtn">대화 비우기 (퇴실)</button>
+      </header>
+      <main class="messages" id="messages"></main>
+      <div class="quick" id="quick"></div>
+      <form class="composer" id="form">
+        <input id="input" placeholder="답장을 입력하세요" autocomplete="off" maxlength="500">
+        <button type="submit">전송</button>
+      </form>
+    </div>
+  </section>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const QUICK = ['네, 확인했습니다 🙂', '바로 가겠습니다', '5분 내로 조치하겠습니다', '불편을 드려 죄송합니다', '이용 감사합니다'];
+  let rooms = [];          // 요약 목록
+  let messages = {};       // roomId -> [msgs]
+  let current = null;      // 선택된 방 id
+  let sound = true;
+  let password = null;
+
+  const $rooms = document.getElementById('rooms');
+  const $msgs = document.getElementById('messages');
+  const $chat = document.getElementById('chat');
+  const $placeholder = document.getElementById('placeholder');
+  const $title = document.getElementById('roomTitle');
+  const $input = document.getElementById('input');
+  const $layout = document.getElementById('layout');
+  const $total = document.getElementById('total');
+  const fmt = (ts) => new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+  document.getElementById('quick').append(...QUICK.map((t) => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = () => send(t); return b;
+  }));
+
+  // 알림음 (외부 파일 없이 브라우저에서 생성)
+  let audioCtx;
+  function beep() {
+    if (!sound) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.12;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.frequency.setValueAtTime(1175, audioCtx.currentTime + 0.12); o.stop(audioCtx.currentTime + 0.3);
+    } catch (e) {}
+  }
+  document.getElementById('soundBtn').onclick = (e) => {
+    sound = !sound; e.target.textContent = sound ? '🔔 알림음 켜짐' : '🔕 알림음 꺼짐';
+    if (sound) beep();
+  };
+
+  function renderRooms() {
+    $rooms.innerHTML = '';
+    let total = 0;
+    rooms.forEach((r) => {
+      total += r.unread;
+      const div = document.createElement('div');
+      div.className = 'room' + (r.unread ? ' unread' : '') + (r.id === current ? ' active' : '');
+      div.innerHTML = `
+        <div class="num"></div>
+        <div class="info">
+          <div class="name"><span></span><time>${r.last ? fmt(r.last.at) : ''}</time></div>
+          <div class="preview">${r.last ? '' : '대화 없음'}</div>
+        </div>
+        ${r.unread ? `<span class="badge">${r.unread}</span>` : ''}`;
+      div.querySelector('.num').textContent = r.name.replace('번방', '');
+      div.querySelector('.name span').textContent = r.name;
+      if (r.last) div.querySelector('.preview').textContent = (r.last.from === 'staff' ? '나: ' : '') + r.last.text;
+      div.onclick = () => open(r.id);
+      $rooms.appendChild(div);
+    });
+    $total.hidden = !total;
+    $total.textContent = total;
+    document.title = (total ? `(${total}) ` : '') + '직원 채팅 관리';
+  }
+
+  function renderMsg(m) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.from === 'staff' ? 'me' : 'them');
+    div.innerHTML = `<span class="text"></span><span class="time">${fmt(m.at)}</span>`;
+    div.querySelector('.text').textContent = m.text;
+    $msgs.appendChild(div);
+  }
+  function renderChat() {
+    $msgs.innerHTML = '';
+    (messages[current] || []).forEach(renderMsg);
+    $msgs.scrollTop = $msgs.scrollHeight;
+  }
+
+  function open(id) {
+    current = id;
+    const r = rooms.find((x) => x.id === id);
+    $title.textContent = r.name + ' 손님';
+    $placeholder.hidden = true; $chat.hidden = false;
+    $layout.classList.add('open');
+    renderChat(); renderRooms();
+    socket.emit('staff:read', { room: id });
+    $input.focus();
+  }
+  document.getElementById('back').onclick = () => { $layout.classList.remove('open'); current = null; renderRooms(); };
+  document.getElementById('clearBtn').onclick = () => {
+    if (current && confirm('이 방의 대화를 모두 지울까요? (손님 화면에서도 지워집니다)')) socket.emit('staff:clear', { room: current });
+  };
+
+  function send(text) {
+    text = text.trim();
+    if (!text || !current) return;
+    socket.emit('staff:message', { room: current, text });
+    $input.value = '';
+  }
+  document.getElementById('form').addEventListener('submit', (e) => { e.preventDefault(); send($input.value); });
+
+  // 서버 연결 (비밀번호는 Basic 인증을 통과한 뒤 서버에서 받아옴)
+  const socket = io();
+  async function join() {
+    if (!password) password = (await (await fetch('/admin/config')).json()).password;
+    socket.emit('staff:join', { password }, (res) => {
+      if (res.error) { alert(res.error); return; }
+      rooms = res.rooms; messages = res.messages || {};
+      renderRooms(); if (current) renderChat();
+    });
+  }
+  socket.on('connect', join);
+  socket.on('rooms', (list) => { rooms = list; renderRooms(); });
+  socket.on('message', (m) => {
+    (messages[m.room] = messages[m.room] || []).push(m);
+    if (m.room === current) {
+      renderMsg(m); $msgs.scrollTop = $msgs.scrollHeight;
+      if (m.from === 'guest') socket.emit('staff:read', { room: m.room });
+    }
+    if (m.from === 'guest') beep();
+  });
+  socket.on('cleared', ({ room }) => { messages[room] = []; if (room === current) renderChat(); });
+</script>
+</body>
+</html>

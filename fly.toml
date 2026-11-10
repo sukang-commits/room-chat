@@ -1,0 +1,18 @@
+app = "room-chat"
+primary_region = "nrt"
+
+[build]
+
+[env]
+  DATA_DIR = "/data"
+  ROOM_COUNT = "10"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  min_machines_running = 1
+
+[mounts]
+  source = "room_chat_data"
+  destination = "/data"
