@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>벌툰 채팅 설정</title>
+<style>
+  body { font-family: "Malgun Gothic", sans-serif; padding: 24px; color: #111; }
+  h2 { margin: 0 0 16px; font-size: 18px; }
+  label { display: block; font-size: 14px; margin: 12px 0 4px; }
+  input { width: 100%; box-sizing: border-box; font-size: 15px; padding: 9px 10px; border: 1px solid #ccc; border-radius: 6px; }
+  button { margin-top: 20px; width: 100%; font-size: 16px; font-weight: 700; padding: 12px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; cursor: pointer; }
+  .hint { font-size: 12px; color: #666; margin-top: 4px; }
+</style></head>
+<body>
+  <h2>벌툰 채팅 설정</h2>
+  <label>서버 주소</label>
+  <input id="url" placeholder="https://room-chat-o19j.onrender.com">
+  <div class="hint">Render에서 받은 주소. 뒤에 /admin 은 붙이지 않습니다.</div>
+  <label>직원 비밀번호</label>
+  <input id="password" type="password" placeholder="ADMIN_PASSWORD 값">
+  <button id="save">저장하고 시작</button>
+  <script>
+    window.bultoonDesktop.getSettings().then((c) => { url.value = c.url || 'https://room-chat-o19j.onrender.com'; password.value = c.password || ''; });
+    save.onclick = () => { if (!url.value.trim()) { alert('서버 주소를 입력하세요'); return; } window.bultoonDesktop.saveSettings({ url: url.value, password: password.value }); };
+  </script>
+</body></html>

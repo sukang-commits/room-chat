@@ -1,0 +1,34 @@
+name: 포스용 프로그램 빌드 (Windows)
+
+on:
+  push:
+    branches: [main]
+    paths: ['desktop/**', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run build:win
+      - name: 설치 파일 업로드 (Release "desktop-latest")
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-latest
+          name: 벌툰 채팅 포스용 프로그램 (최신)
+          body: |
+            Windows 포스 PC용 설치 파일입니다. `bultoon-chat-setup-*.exe` 를 내려받아 실행하세요.
+            손님 메시지가 오면 창이 포스 프로그램 위로 올라옵니다.
+          files: desktop/dist/*.exe
+          prerelease: false

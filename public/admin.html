@@ -169,6 +169,7 @@
     } catch (e) {}
   }
   function refreshSetup() {
+    if (window.bultoonDesktop) { $('setup').hidden = true; return; }  // 전용 프로그램에서는 불필요
     const need = ('Notification' in window) && Notification.permission !== 'granted';
     $('setup').hidden = !need;
     if ('Notification' in window && Notification.permission === 'denied') $('setupMsg').textContent = '브라우저에서 알림이 차단되어 있습니다. 주소창 왼쪽 자물쇠 → 알림 → 허용으로 바꿔 주세요.';
@@ -190,7 +191,8 @@
     $('alertMore').textContent = others.length ? `다른 방도 기다리는 중: ${others.map((id) => (rooms.find((x) => x.id === id) || { name: id }).name).join(', ')}` : '';
     $alert.hidden = false;
     startRinging();
-    if (!m.test) systemNotify(m);
+    if (window.bultoonDesktop) window.bultoonDesktop.alert();   // 포스용 프로그램: 창을 맨 위로
+    else if (!m.test) systemNotify(m);
   }
   function acknowledge(roomId) {
     const last = pending[pending.length - 1];
@@ -198,6 +200,7 @@
     pending = [];
     $alert.hidden = true;
     stopRinging();
+    if (window.bultoonDesktop) window.bultoonDesktop.ack();     // 포스용 프로그램: 보통 창으로
     if (target && rooms.find((x) => x.id === target)) open(target);
   }
   $alert.onclick = () => acknowledge();

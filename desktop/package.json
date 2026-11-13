@@ -1,0 +1,25 @@
+{
+  "name": "bultoon-chat-desktop",
+  "productName": "벌툰 채팅",
+  "version": "1.0.0",
+  "description": "벌툰 채팅 포스용 알림 프로그램 - 손님 메시지가 오면 창이 맨 위로 올라옵니다",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "camp.bultoon.chat",
+    "productName": "벌툰 채팅",
+    "artifactName": "bultoon-chat-setup-${version}.${ext}",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "settings.html", "icon.png"],
+    "win": { "target": ["nsis"], "icon": "icon.png" },
+    "nsis": { "oneClick": true, "perMachine": false, "runAfterFinish": true, "createDesktopShortcut": true, "shortcutName": "벌툰 채팅" }
+  }
+}
