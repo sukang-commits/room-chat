@@ -1,7 +1,7 @@
 {
   "name": "room-chat",
   "version": "1.0.0",
-  "description": "방별 QR 손님-직원 실시간 채팅",
+  "description": "벌툰 채팅 - 방별 QR 손님-직원 실시간 채팅",
   "main": "index.js",
   "scripts": {
     "start": "node server.js"

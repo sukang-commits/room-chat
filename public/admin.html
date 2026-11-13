@@ -3,14 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>직원 채팅 관리</title>
+<title>벌툰 채팅</title>
 <link rel="stylesheet" href="/style.css">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#111827">
 <style>
   body { height: 100dvh; display: flex; flex-direction: column; }
-  .topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #111827; color: #fff; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #111827; color: #fff; }
   .topbar h1 { font-size: 16px; margin: 0; flex: 1; }
   .topbar a, .topbar button { color: #fff; background: #374151; border: 0; border-radius: 8px; padding: 7px 12px; font-size: 13px; text-decoration: none; }
   .topbar .total { background: var(--badge); }
+  .topbar button.warn { background: #f59e0b; color: #111; font-weight: 700; }
   .layout { flex: 1; display: flex; min-height: 0; }
   .sidebar { width: 300px; background: var(--card); border-right: 1px solid var(--line); overflow-y: auto; }
   .search { position: sticky; top: 0; background: var(--card); padding: 8px 10px; border-bottom: 1px solid var(--line); z-index: 1; }
@@ -19,7 +23,7 @@
   .room:hover { background: #f9fafb; }
   .room.active { background: #eff6ff; }
   .room .num { width: 44px; height: 44px; border-radius: 12px; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; text-align: center; line-height: 1.1; }
-  .room.unread .num { background: var(--accent); color: #fff; }
+  .room.unread .num { background: var(--badge); color: #fff; animation: blink 1s infinite; }
   .room .info { flex: 1; min-width: 0; }
   .room .name { font-weight: 600; font-size: 15px; display: flex; justify-content: space-between; }
   .room .name time { font-weight: 400; font-size: 12px; color: var(--muted); }
@@ -30,7 +34,23 @@
   .panel .chat-header .clear { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 10px; font-size: 13px; color: var(--muted); }
   .msg.them { background: #fff; }
   .msg.me { background: var(--accent); }
-  .placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 15px; text-align: center; line-height: 1.7; }
+  .placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 15px; text-align: center; line-height: 1.7; padding: 20px; }
+  @keyframes blink { 50% { opacity: .35; } }
+
+  /* 새 메시지 전체화면 알림 (포스용) */
+  .alert { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: rgba(185, 28, 28, .96); color: #fff; text-align: center; padding: 24px; animation: flash .8s infinite; cursor: pointer; }
+  @keyframes flash { 50% { background: rgba(220, 38, 38, .96); } }
+  .alert .label { font-size: 22px; font-weight: 600; opacity: .9; }
+  .alert .room-big { font-size: clamp(56px, 12vw, 120px); font-weight: 900; line-height: 1; letter-spacing: -2px; }
+  .alert .text { font-size: clamp(26px, 5vw, 48px); font-weight: 700; max-width: 90vw; word-break: keep-all; }
+  .alert .more { font-size: 18px; opacity: .85; }
+  .alert button { margin-top: 10px; font-size: 24px; font-weight: 800; padding: 18px 48px; border: 0; border-radius: 16px; background: #fff; color: #b91c1c; }
+  .alert .hint { font-size: 14px; opacity: .8; }
+
+  /* 설정 안내 띠 */
+  .setup { background: #fef3c7; color: #78350f; padding: 10px 16px; font-size: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .setup button { background: #b45309; color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: 14px; }
+
   @media (max-width: 700px) {
     .sidebar { width: 100%; }
     .panel { display: none; }
@@ -42,11 +62,17 @@
 </head>
 <body>
 <header class="topbar">
-  <h1>직원 채팅 관리</h1>
+  <h1>벌툰 채팅</h1>
   <span class="badge total" id="total" hidden>0</span>
-  <button id="soundBtn" title="알림음 켜기/끄기">🔔 알림음 켜짐</button>
+  <button id="testBtn" title="알림음과 알림창을 테스트합니다">🔔 알림 테스트</button>
   <a href="/admin/qr" target="_blank">QR 인쇄</a>
 </header>
+
+<div class="setup" id="setup" hidden>
+  <span>⚠️ 포스에서 알림이 바로 뜨게 하려면 알림 권한을 허용해 주세요.</span>
+  <button id="permBtn">알림 허용하기</button>
+  <span id="setupMsg"></span>
+</div>
 
 <div class="layout" id="layout">
   <aside class="sidebar">
@@ -55,7 +81,7 @@
   </aside>
 
   <section class="panel">
-    <div class="placeholder" id="placeholder">왼쪽에서 방을 선택하세요.<br>손님이 메시지를 보내면 방 번호가 파란색으로 바뀌고 알림음이 울립니다.</div>
+    <div class="placeholder" id="placeholder">왼쪽에서 방을 선택하세요.<br>손님이 메시지를 보내면 화면 전체에 빨간 알림이 뜨고, 확인할 때까지 벨이 울립니다.</div>
     <div class="chat" id="chat" hidden>
       <header class="chat-header">
         <button class="back" id="back" aria-label="목록으로">‹</button>
@@ -72,50 +98,105 @@
   </section>
 </div>
 
+<!-- 전체화면 알림 -->
+<div class="alert" id="alert" hidden>
+  <div class="label">🔔 손님 메시지</div>
+  <div class="room-big" id="alertRoom"></div>
+  <div class="text" id="alertText"></div>
+  <div class="more" id="alertMore"></div>
+  <button id="alertOpen">확인하고 열기</button>
+  <div class="hint">아무 곳이나 눌러도 열립니다</div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
+  const APP = '벌툰 채팅';
   const QUICK = ['네, 확인했습니다 🙂', '바로 가겠습니다', '5분 내로 조치하겠습니다', '불편을 드려 죄송합니다', '이용 감사합니다'];
   let rooms = [];          // 요약 목록
   let messages = {};       // roomId -> [msgs]
   let current = null;      // 선택된 방 id
-  let sound = true;
   let password = null;
+  let pending = [];        // 아직 확인 안 한 알림 메시지들
 
-  const $rooms = document.getElementById('rooms');
-  const $msgs = document.getElementById('messages');
-  const $chat = document.getElementById('chat');
-  const $placeholder = document.getElementById('placeholder');
-  const $title = document.getElementById('roomTitle');
-  const $input = document.getElementById('input');
-  const $layout = document.getElementById('layout');
-  const $total = document.getElementById('total');
+  const $ = (id) => document.getElementById(id);
+  const $rooms = $('rooms'), $msgs = $('messages'), $chat = $('chat'), $placeholder = $('placeholder');
+  const $title = $('roomTitle'), $input = $('input'), $layout = $('layout'), $total = $('total'), $alert = $('alert');
   const fmt = (ts) => new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
-  document.getElementById('quick').append(...QUICK.map((t) => {
-    const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = () => send(t); return b;
-  }));
+  $('quick').append(...QUICK.map((t) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = () => send(t); return b; }));
 
-  // 알림음 (외부 파일 없이 브라우저에서 생성)
-  let audioCtx;
-  function beep() {
-    if (!sound) return;
+  // ---------- 소리: 확인할 때까지 반복되는 벨 ----------
+  let audioCtx, ringTimer = null;
+  function unlockAudio() {
+    try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) {}
+  }
+  function ring() {
     try {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-      o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.12;
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start(); o.frequency.setValueAtTime(1175, audioCtx.currentTime + 0.12); o.stop(audioCtx.currentTime + 0.3);
+      unlockAudio();
+      const t0 = audioCtx.currentTime;
+      [[880, 0], [1175, .15], [880, .3], [1175, .45], [1568, .6]].forEach(([f, dt]) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'square'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t0 + dt); g.gain.exponentialRampToValueAtTime(0.25, t0 + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.14);
+        o.connect(g); g.connect(audioCtx.destination); o.start(t0 + dt); o.stop(t0 + dt + 0.15);
+      });
     } catch (e) {}
   }
-  document.getElementById('soundBtn').onclick = (e) => {
-    sound = !sound; e.target.textContent = sound ? '🔔 알림음 켜짐' : '🔕 알림음 꺼짐';
-    if (sound) beep();
+  function startRinging() { if (ringTimer) return; ring(); ringTimer = setInterval(ring, 3000); }
+  function stopRinging() { clearInterval(ringTimer); ringTimer = null; }
+
+  // ---------- 윈도우 알림창 (브라우저가 뒤에 있어도 뜸) ----------
+  const notes = {};
+  function systemNotify(m) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const r = rooms.find((x) => x.id === m.room);
+    try {
+      if (notes[m.room]) notes[m.room].close();
+      const n = new Notification(`${r ? r.name : m.room} 손님`, { body: m.text, tag: 'room-' + m.room, renotify: true, requireInteraction: true, icon: '/icon-192.png', badge: '/icon-192.png', silent: true });
+      n.onclick = () => { window.focus(); acknowledge(m.room); n.close(); };
+      notes[m.room] = n;
+    } catch (e) {}
+  }
+  function refreshSetup() {
+    const need = ('Notification' in window) && Notification.permission !== 'granted';
+    $('setup').hidden = !need;
+    if ('Notification' in window && Notification.permission === 'denied') $('setupMsg').textContent = '브라우저에서 알림이 차단되어 있습니다. 주소창 왼쪽 자물쇠 → 알림 → 허용으로 바꿔 주세요.';
+  }
+  $('permBtn').onclick = async () => { unlockAudio(); try { await Notification.requestPermission(); } catch (e) {} refreshSetup(); };
+  $('testBtn').onclick = () => {
+    unlockAudio();
+    showAlert({ room: rooms[0] ? rooms[0].id : '1', text: '알림 테스트입니다 (실제 손님 메시지 아님)', at: Date.now(), test: true });
+    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().then(refreshSetup);
   };
 
+  // ---------- 전체화면 알림 ----------
+  function showAlert(m) {
+    pending.push(m);
+    const r = rooms.find((x) => x.id === m.room);
+    $('alertRoom').textContent = r ? r.name : m.room + '번방';
+    $('alertText').textContent = m.text;
+    const others = [...new Set(pending.map((p) => p.room))].filter((id) => id !== m.room);
+    $('alertMore').textContent = others.length ? `다른 방도 기다리는 중: ${others.map((id) => (rooms.find((x) => x.id === id) || { name: id }).name).join(', ')}` : '';
+    $alert.hidden = false;
+    startRinging();
+    if (!m.test) systemNotify(m);
+  }
+  function acknowledge(roomId) {
+    const last = pending[pending.length - 1];
+    const target = roomId || (last && last.room);
+    pending = [];
+    $alert.hidden = true;
+    stopRinging();
+    if (target && rooms.find((x) => x.id === target)) open(target);
+  }
+  $alert.onclick = () => acknowledge();
+  $('alertOpen').onclick = (e) => { e.stopPropagation(); acknowledge(); };
+
+  // ---------- 방 목록 ----------
   function renderRooms() {
     $rooms.innerHTML = '';
     let total = 0;
-    const q = document.getElementById('search').value.trim();
+    const q = $('search').value.trim();
     const sorted = [...rooms].sort((a, b) =>
       (b.unread > 0) - (a.unread > 0) || ((b.last && b.last.at) || 0) - ((a.last && a.last.at) || 0) || Number(a.id) - Number(b.id));
     rooms.forEach((r) => { total += r.unread; });
@@ -135,11 +216,11 @@
       div.onclick = () => open(r.id);
       $rooms.appendChild(div);
     });
-    document.getElementById('search').oninput = renderRooms;
     $total.hidden = !total;
     $total.textContent = total;
-    document.title = (total ? `(${total}) ` : '') + '직원 채팅 관리';
+    document.title = (total ? `🔴 (${total}) ` : '') + APP;
   }
+  $('search').oninput = renderRooms;
 
   function renderMsg(m) {
     const div = document.createElement('div');
@@ -153,7 +234,6 @@
     (messages[current] || []).forEach(renderMsg);
     $msgs.scrollTop = $msgs.scrollHeight;
   }
-
   function open(id) {
     current = id;
     const r = rooms.find((x) => x.id === id);
@@ -162,22 +242,22 @@
     $layout.classList.add('open');
     renderChat(); renderRooms();
     socket.emit('staff:read', { room: id });
+    if (notes[id]) { notes[id].close(); delete notes[id]; }
     $input.focus();
   }
-  document.getElementById('back').onclick = () => { $layout.classList.remove('open'); current = null; renderRooms(); };
-  document.getElementById('clearBtn').onclick = () => {
+  $('back').onclick = () => { $layout.classList.remove('open'); current = null; renderRooms(); };
+  $('clearBtn').onclick = () => {
     if (current && confirm('이 방의 대화를 모두 지울까요? (손님 화면에서도 지워집니다)')) socket.emit('staff:clear', { room: current });
   };
-
   function send(text) {
     text = text.trim();
     if (!text || !current) return;
     socket.emit('staff:message', { room: current, text });
     $input.value = '';
   }
-  document.getElementById('form').addEventListener('submit', (e) => { e.preventDefault(); send($input.value); });
+  $('form').addEventListener('submit', (e) => { e.preventDefault(); send($input.value); });
 
-  // 서버 연결 (비밀번호는 Basic 인증을 통과한 뒤 서버에서 받아옴)
+  // ---------- 서버 연결 ----------
   const socket = io();
   async function join() {
     if (!password) password = (await (await fetch('/admin/config')).json()).password;
@@ -185,19 +265,25 @@
       if (res.error) { alert(res.error); return; }
       rooms = res.rooms; messages = res.messages || {};
       renderRooms(); if (current) renderChat();
+      if (rooms.some((r) => r.unread)) startRinging(); // 꺼져 있던 동안 온 메시지
     });
   }
   socket.on('connect', join);
-  socket.on('rooms', (list) => { rooms = list; renderRooms(); });
+  socket.on('rooms', (list) => { rooms = list; renderRooms(); if (!rooms.some((r) => r.unread) && $alert.hidden) stopRinging(); });
   socket.on('message', (m) => {
     (messages[m.room] = messages[m.room] || []).push(m);
-    if (m.room === current) {
-      renderMsg(m); $msgs.scrollTop = $msgs.scrollHeight;
-      if (m.from === 'guest') socket.emit('staff:read', { room: m.room });
-    }
-    if (m.from === 'guest') beep();
+    if (m.room === current) { renderMsg(m); $msgs.scrollTop = $msgs.scrollHeight; }
+    if (m.from !== 'guest') return;
+    // 보고 있는 방에 온 메시지이고 창이 앞에 있으면 소리만, 아니면 전체화면 알림
+    if (m.room === current && document.visibilityState === 'visible' && document.hasFocus()) { ring(); socket.emit('staff:read', { room: m.room }); }
+    else showAlert(m);
   });
   socket.on('cleared', ({ room }) => { messages[room] = []; if (room === current) renderChat(); });
+
+  // 첫 클릭 때 소리 잠금 해제 (브라우저 정책)
+  document.addEventListener('pointerdown', unlockAudio, { once: true });
+  refreshSetup();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 </script>
 </body>
 </html>

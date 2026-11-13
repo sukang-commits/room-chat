@@ -1,4 +1,4 @@
-// 방별 QR 채팅앱 - 손님(방) <-> 직원(관리자) 실시간 채팅 서버
+// 벌툰 채팅 - 방별 QR 채팅앱 - 손님(방) <-> 직원(관리자) 실시간 채팅 서버
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
