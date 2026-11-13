@@ -36,7 +36,7 @@
   .cols .c .tip { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: #111827; color: #fff; font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; z-index: 2; }
   .cols .c:hover .tip { display: block; }
   .xlab { display: flex; gap: 2px; margin-top: 4px; }
-  .xlab span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); overflow: hidden; }
+  .xlab span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); overflow: hidden; white-space: nowrap; }
   .empty { color: var(--muted); font-size: 14px; padding: 12px 0; }
   .note { font-size: 12px; color: var(--muted); margin-top: 20px; line-height: 1.6; }
 </style>
@@ -86,13 +86,13 @@
     const d = await (await fetch('/admin/stats.json?days=' + days)).json();
     const t = d.totals;
     $('tiles').innerHTML =
-      tile('오늘 손님 메시지', t.today) + tile('최근 7일', t.week) + tile(`최근 ${d.days}일`, t.period) + tile('전체 누적', t.all) +
+      tile('오늘 손님 메시지', t.today) + tile('최근 7일', t.week) + (d.days !== 7 ? tile(`최근 ${d.days}일`, t.period) : '') + tile('전체 누적', t.all) +
       tile(`${d.days}일간 사용한 방`, t.activeRooms + '<small>/ ' + d.byRoom.length + '개</small>') +
       tile('평균 응답 시간', fmtWait(t.avgWait)) + tile('응답 시간 중간값', fmtWait(t.medWait)) + tile('답장 없는 요청', t.unanswered);
     $('dayRange').textContent = `최근 ${d.days}일`;
     const dayItems = d.byDay.map((x) => ({ ...x, label: x.day.slice(5).replace('-', '/') }));
     $('byDay').innerHTML = cols(dayItems, d.days > 60 ? 30 : d.days > 14 ? 5 : 1, (x) => `${x.day} · ${x.n}건`);
-    $('byHour').innerHTML = cols(d.byHour.map((n, h) => ({ n, label: h + '시' })), 3, (x) => `${x.label} · ${x.n}건`);
+    $('byHour').innerHTML = cols(d.byHour.map((n, h) => ({ n, label: String(h) })), 3, (x) => `${x.label}시 · ${x.n}건`);
     const rooms = d.byRoom.filter((r) => r.guest > 0 || r.staff > 0);
     $('byRoom').innerHTML = rooms.length ? `<table><thead><tr><th>방</th><th class="n">손님</th><th class="n">직원</th><th>마지막</th></tr></thead><tbody>${rooms.map((r) => `<tr><td>${esc(r.name)}</td><td class="n">${r.guest}</td><td class="n">${r.staff}</td><td>${fmtDT(r.last)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">아직 기록이 없습니다.</div>';
     const maxT = Math.max(1, ...d.byText.map((x) => x.n));
