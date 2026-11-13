@@ -1,7 +1,7 @@
 {
   "name": "bultoon-chat-desktop",
   "productName": "벌툰 채팅",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "벌툰 채팅 포스용 알림 프로그램 - 손님 메시지가 오면 창이 맨 위로 올라옵니다",
   "main": "main.js",
   "private": true,

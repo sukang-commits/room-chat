@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
-let config = { url: '', password: '' };
+let config = { url: '', password: '', bounds: null };
 try { config = Object.assign(config, JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))); } catch (e) {}
 function saveConfig() { fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true }); fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2)); }
 
@@ -25,8 +25,10 @@ app.on('login', (event, webContents, details, authInfo, callback) => {
 function adminUrl() { return config.url.replace(/\/+$/, '') + '/admin'; }
 
 function createWindow() {
+  // 카카오톡 PC 정도의 세로로 긴 창. 마지막 크기/위치를 기억
+  const b = config.bounds || {};
   win = new BrowserWindow({
-    width: 1200, height: 800, minWidth: 800, minHeight: 600,
+    width: b.width || 420, height: b.height || 720, x: b.x, y: b.y, minWidth: 360, minHeight: 560,
     title: '벌툰 채팅',
     icon: path.join(__dirname, 'icon.png'),
     autoHideMenuBar: true,
@@ -35,6 +37,8 @@ function createWindow() {
   win.loadURL(adminUrl());
   // 닫기 버튼 = 트레이로 숨김 (프로그램은 계속 실행되어 알림을 받음)
   win.on('close', (e) => { if (!quitting) { e.preventDefault(); win.hide(); } });
+  const remember = () => { if (win && !win.isMinimized()) { config.bounds = win.getBounds(); saveConfig(); } };
+  win.on('resize', remember); win.on('move', remember);
   win.webContents.on('did-fail-load', (e, code, desc) => {
     if (code === -3) return; // 사용자가 중단한 로드
     win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(
@@ -43,6 +47,18 @@ function createWindow() {
 }
 
 // ---------- 맨 위로 올리기 / 내리기 ----------
+// 알림을 확인하기 전에는 최소화하거나 숨겨도 몇 초 뒤 다시 올라옵니다
+let alertActive = false, reRaiseTimer = null;
+const RE_RAISE_MS = 4000;
+function startReRaise() {
+  alertActive = true;
+  clearInterval(reRaiseTimer);
+  reRaiseTimer = setInterval(() => {
+    if (!alertActive || !win) return;
+    if (win.isMinimized() || !win.isVisible() || !win.isAlwaysOnTop()) bringToFront();
+  }, RE_RAISE_MS);
+}
+function stopReRaise() { alertActive = false; clearInterval(reRaiseTimer); reRaiseTimer = null; }
 function bringToFront() {
   if (!win) return;
   if (win.isMinimized()) win.restore();
@@ -58,8 +74,8 @@ function backToNormal() {
   win.setAlwaysOnTop(false);
   win.flashFrame(false);
 }
-ipcMain.on('bultoon:alert', bringToFront);
-ipcMain.on('bultoon:ack', backToNormal);
+ipcMain.on('bultoon:alert', () => { bringToFront(); startReRaise(); });
+ipcMain.on('bultoon:ack', () => { stopReRaise(); backToNormal(); });
 
 // ---------- 설정 창 ----------
 function openSettings() {
@@ -86,7 +102,7 @@ function createTray() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '열기', click: () => { if (win) { win.show(); win.focus(); } } },
     { label: '설정 (서버 주소/비밀번호)', click: openSettings },
-    { label: '알림 테스트 (맨 위로 올리기)', click: () => { bringToFront(); setTimeout(backToNormal, 3000); } },
+    { label: '알림 테스트 (맨 위로 올리기)', click: () => { if (win) win.webContents.executeJavaScript("document.getElementById('testBtn').click()").catch(() => {}); } },
     { type: 'separator' },
     { label: '종료', click: () => { quitting = true; app.quit(); } },
   ]));
