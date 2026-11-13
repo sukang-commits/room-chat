@@ -65,8 +65,72 @@ function save() {
 function history(roomId) {
   return store.messages[roomId] || [];
 }
+// ---------- 통계용 기록: 대화를 비워도 남는 한 줄짜리 로그 (data/stats.jsonl) ----------
+const STATS_FILE = path.join(DATA_DIR, 'stats.jsonl');
+let statsLog = [];
+try { statsLog = fs.readFileSync(STATS_FILE, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch (e) {}
+function logStat(msg) {
+  const row = { room: msg.room, from: msg.from, text: msg.text, at: msg.at };
+  statsLog.push(row);
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.appendFile(STATS_FILE, JSON.stringify(row) + '\n', () => {});
+}
+function buildStats(days) {
+  const now = Date.now();
+  const dayMs = 86400000;
+  const since = now - days * dayMs;
+  const rows = statsLog.filter((r) => r.at >= since);
+  const guest = rows.filter((r) => r.from === 'guest');
+  const kst = (ts) => new Date(ts + 9 * 3600000); // 한국 시간
+  const dayKey = (ts) => kst(ts).toISOString().slice(0, 10);
+  const todayKey = dayKey(now);
+  const weekSince = now - 7 * dayMs;
+  // 방별
+  const byRoom = {};
+  rooms.forEach((r) => { byRoom[r.id] = { id: r.id, name: r.name, guest: 0, staff: 0, last: null }; });
+  rows.forEach((r) => { const b = byRoom[r.room]; if (!b) return; b[r.from === 'guest' ? 'guest' : 'staff']++; if (!b.last || r.at > b.last) b.last = r.at; });
+  // 문구별 (손님)
+  const byText = {};
+  guest.forEach((r) => { byText[r.text] = (byText[r.text] || 0) + 1; });
+  // 시간대별 / 일별 (손님 메시지)
+  const byHour = Array.from({ length: 24 }, () => 0);
+  guest.forEach((r) => { byHour[kst(r.at).getUTCHours()]++; });
+  const byDay = {};
+  for (let i = days - 1; i >= 0; i--) byDay[dayKey(now - i * dayMs)] = 0;
+  guest.forEach((r) => { const k = dayKey(r.at); if (k in byDay) byDay[k]++; });
+  // 응답 시간: 손님 메시지 뒤 같은 방의 첫 직원 답장까지 (2시간 넘으면 제외)
+  const waits = [];
+  const sorted = [...rows].sort((a, b) => a.at - b.at);
+  const open = {}; // room -> 첫 미응답 손님 메시지 시각
+  sorted.forEach((r) => {
+    if (r.from === 'guest') { if (!(r.room in open)) open[r.room] = r.at; }
+    else if (r.room in open) { const w = r.at - open[r.room]; if (w <= 2 * 3600000) waits.push(w); delete open[r.room]; }
+  });
+  waits.sort((a, b) => a - b);
+  const avgWait = waits.length ? Math.round(waits.reduce((a, b) => a + b, 0) / waits.length) : null;
+  const medWait = waits.length ? waits[Math.floor(waits.length / 2)] : null;
+  const unanswered = Object.keys(open).length;
+  return {
+    days,
+    totals: {
+      today: guest.filter((r) => dayKey(r.at) === todayKey).length,
+      week: guest.filter((r) => r.at >= weekSince).length,
+      period: guest.length,
+      all: statsLog.filter((r) => r.from === 'guest').length,
+      staffPeriod: rows.length - guest.length,
+      activeRooms: Object.values(byRoom).filter((b) => b.guest > 0).length,
+      avgWait, medWait, answered: waits.length, unanswered,
+    },
+    byRoom: Object.values(byRoom).sort((a, b) => b.guest - a.guest || Number(a.id) - Number(b.id)),
+    byText: Object.entries(byText).map(([text, n]) => ({ text, n })).sort((a, b) => b.n - a.n).slice(0, 10),
+    byHour,
+    byDay: Object.entries(byDay).map(([day, n]) => ({ day, n })),
+  };
+}
+
 function addMessage(roomId, from, text) {
   const msg = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), room: roomId, from, text, at: Date.now() };
+  logStat(msg);
   if (!store.messages[roomId]) store.messages[roomId] = [];
   store.messages[roomId].push(msg);
   if (store.messages[roomId].length > 500) store.messages[roomId] = store.messages[roomId].slice(-500);
@@ -121,6 +185,8 @@ app.get('/r/:slug', (req, res) => {
 // 직원 페이지
 app.get('/admin', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/admin/qr', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'qr.html')));
+app.get('/admin/stats', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'stats.html')));
+app.get('/admin/stats.json', adminAuth, (req, res) => res.json(buildStats(Math.min(365, Math.max(1, parseInt(req.query.days || '30', 10) || 30)))));
 app.get('/admin/config', adminAuth, (req, res) => res.json({ password: ADMIN_PASSWORD, rooms: rooms.map((r) => ({ ...r, slug: roomSlug(r.id) })), baseUrl: baseUrl(req) }));
 
 // QR 이미지 (직원만)

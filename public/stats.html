@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>벌툰 채팅 통계</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<style>
+  body { padding: 20px 16px 40px; max-width: 1100px; margin: 0 auto; }
+  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .bar h1 { font-size: 20px; margin: 0; flex: 1; }
+  .bar select { font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .tile .k { font-size: 12px; color: var(--muted); }
+  .tile .v { font-size: 28px; font-weight: 800; margin-top: 4px; letter-spacing: -0.5px; }
+  .tile .v small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; }
+  .card h2 small { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  /* 단일 계열 막대 (한 가지 색, 얇게, 끝 둥글게) */
+  .hbar { display: flex; align-items: center; gap: 8px; }
+  .hbar i { display: block; height: 10px; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .hbar b { font-weight: 500; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .cols { display: flex; align-items: flex-end; gap: 2px; height: 140px; border-bottom: 1px solid var(--line); padding-bottom: 0; position: relative; }
+  .cols .c { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; position: relative; }
+  .cols .c i { display: block; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 0; }
+  .cols .c:hover i { background: #1d4ed8; }
+  .cols .c .tip { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: #111827; color: #fff; font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; z-index: 2; }
+  .cols .c:hover .tip { display: block; }
+  .xlab { display: flex; gap: 2px; margin-top: 4px; }
+  .xlab span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); overflow: hidden; }
+  .empty { color: var(--muted); font-size: 14px; padding: 12px 0; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 20px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>벌툰 채팅 통계</h1>
+  <select id="days">
+    <option value="7">최근 7일</option>
+    <option value="30" selected>최근 30일</option>
+    <option value="90">최근 90일</option>
+    <option value="365">최근 1년</option>
+  </select>
+  <a href="/admin">← 채팅으로</a>
+</div>
+
+<div class="tiles" id="tiles"></div>
+
+<div class="grid">
+  <div class="card"><h2>일별 손님 메시지 <small id="dayRange"></small></h2><div id="byDay"></div></div>
+  <div class="card"><h2>시간대별 손님 메시지 <small>한국 시간</small></h2><div id="byHour"></div></div>
+  <div class="card"><h2>방별 메시지 <small>손님 메시지 많은 순</small></h2><div id="byRoom"></div></div>
+  <div class="card"><h2>많이 보낸 문구 <small>상위 10개</small></h2><div id="byText"></div></div>
+</div>
+
+<p class="note">손님 메시지 기준으로 집계합니다. "대화 비우기"를 해도 통계 기록은 남습니다. 응답 시간은 손님 메시지 뒤 같은 방에 직원이 처음 답장할 때까지의 시간이며, 2시간을 넘긴 경우는 평균에서 뺍니다.</p>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmtWait = (ms) => ms == null ? '-' : ms < 60000 ? Math.round(ms / 1000) + '<small>초</small>' : ms < 3600000 ? Math.round(ms / 60000) + '<small>분</small>' : (ms / 3600000).toFixed(1) + '<small>시간</small>';
+  const fmtDT = (ts) => ts ? new Date(ts).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+  function tile(k, v) { return `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
+  function hbars(items, label, max) {
+    if (!items.length) return '<div class="empty">아직 기록이 없습니다.</div>';
+    return `<table><tbody>${items.map((it) => `<tr><td style="width:40%">${label(it)}</td><td><div class="hbar"><i style="width:${Math.max(2, it.n / max * 100)}%"></i><b>${it.n}</b></div></td></tr>`).join('')}</tbody></table>`;
+  }
+  function cols(items, labelEvery, tipOf) {
+    const max = Math.max(1, ...items.map((i) => i.n));
+    return `<div class="cols">${items.map((it) => `<div class="c"><span class="tip">${tipOf(it)}</span><i style="height:${it.n / max * 100}%"></i></div>`).join('')}</div>
+      <div class="xlab">${items.map((it, i) => `<span>${i % labelEvery === 0 ? it.label : ''}</span>`).join('')}</div>`;
+  }
+
+  async function load() {
+    const days = $('days').value;
+    const d = await (await fetch('/admin/stats.json?days=' + days)).json();
+    const t = d.totals;
+    $('tiles').innerHTML =
+      tile('오늘 손님 메시지', t.today) + tile('최근 7일', t.week) + tile(`최근 ${d.days}일`, t.period) + tile('전체 누적', t.all) +
+      tile(`${d.days}일간 사용한 방`, t.activeRooms + '<small>/ ' + d.byRoom.length + '개</small>') +
+      tile('평균 응답 시간', fmtWait(t.avgWait)) + tile('응답 시간 중간값', fmtWait(t.medWait)) + tile('답장 없는 요청', t.unanswered);
+    $('dayRange').textContent = `최근 ${d.days}일`;
+    const dayItems = d.byDay.map((x) => ({ ...x, label: x.day.slice(5).replace('-', '/') }));
+    $('byDay').innerHTML = cols(dayItems, d.days > 60 ? 30 : d.days > 14 ? 5 : 1, (x) => `${x.day} · ${x.n}건`);
+    $('byHour').innerHTML = cols(d.byHour.map((n, h) => ({ n, label: h + '시' })), 3, (x) => `${x.label} · ${x.n}건`);
+    const rooms = d.byRoom.filter((r) => r.guest > 0 || r.staff > 0);
+    $('byRoom').innerHTML = rooms.length ? `<table><thead><tr><th>방</th><th class="n">손님</th><th class="n">직원</th><th>마지막</th></tr></thead><tbody>${rooms.map((r) => `<tr><td>${esc(r.name)}</td><td class="n">${r.guest}</td><td class="n">${r.staff}</td><td>${fmtDT(r.last)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">아직 기록이 없습니다.</div>';
+    const maxT = Math.max(1, ...d.byText.map((x) => x.n));
+    $('byText').innerHTML = hbars(d.byText, (x) => esc(x.text), maxT);
+  }
+  $('days').onchange = load;
+  load();
+</script>
+</body>
+</html>
