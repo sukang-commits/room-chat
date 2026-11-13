@@ -41,14 +41,13 @@
 <div class="grid" id="grid"></div>
 <script>
   fetch('/admin/config').then((r) => r.json()).then(({ rooms, baseUrl }) => {
-    document.getElementById('base').textContent = 'QR 주소: ' + baseUrl + '/r/…';
+    document.getElementById('base').textContent = '각 방의 QR에는 비밀 코드가 들어 있어 번호를 바꿔서는 다른 방에 들어갈 수 없습니다';
     document.getElementById('grid').innerHTML = rooms.map((r) => `
       <div class="card">
         <h2>${r.name}</h2>
         <p class="title">불편한 점은 QR로 말씀해 주세요</p>
         <img src="/api/qr/${r.id}.png" alt="${r.name} QR">
         <p class="desc">카메라로 찍으면 바로 채팅창이 열려요. 앱 설치나 로그인은 없어요.<br>이 방 전용 채팅이라 방 번호를 말씀하실 필요 없어요.</p>
-        <div class="link">${baseUrl}/r/${r.id}</div>
       </div>`).join('');
   });
 </script>

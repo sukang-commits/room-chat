@@ -5,6 +5,7 @@ const http = require('http');
 const express = require('express');
 const { Server } = require('socket.io');
 const QRCode = require('qrcode');
+const crypto = require('crypto');
 
 // ---------- 설정 (환경변수로 변경 가능) ----------
 const PORT = process.env.PORT || 3000;
@@ -14,7 +15,31 @@ const ROOM_NAMES = process.env.ROOM_NAMES                              // 직접
   ? process.env.ROOM_NAMES.split(',').map((s) => s.trim()).filter(Boolean)
   : null;
 const BASE_URL = process.env.BASE_URL || '';                           // QR에 들어갈 주소 (예: https://chat.mycamp.com)
-const DATA_FILE = path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'messages.json'); // DATA_DIR: 영구 디스크 경로
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');                 // 영구 디스크 경로
+const DATA_FILE = path.join(DATA_DIR, 'messages.json');
+
+// ---------- 방 비밀 코드 ----------
+// QR 주소는 /r/1-a8f3k2c1 처럼 방 번호 뒤에 비밀 코드가 붙습니다. 번호만 바꿔서는 다른 방에 못 들어갑니다.
+// ROOM_SECRET 환경변수가 없으면 처음 실행 때 만들어 data/secret.txt 에 저장합니다. (바뀌면 인쇄한 QR이 전부 무효가 되니 주의)
+const SECRET_FILE = path.join(DATA_DIR, 'secret.txt');
+let ROOM_SECRET = process.env.ROOM_SECRET || '';
+if (!ROOM_SECRET) {
+  try { ROOM_SECRET = fs.readFileSync(SECRET_FILE, 'utf8').trim(); } catch (e) {}
+  if (!ROOM_SECRET) {
+    ROOM_SECRET = crypto.randomBytes(24).toString('base64url');
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(SECRET_FILE, ROOM_SECRET);
+  }
+}
+function roomToken(id) { return crypto.createHmac('sha256', ROOM_SECRET).update(String(id)).digest('base64url').slice(0, 8).toLowerCase(); }
+function roomSlug(id) { return `${id}-${roomToken(id)}`; }
+// "1-a8f3k2c1" -> "1" (코드가 틀리면 null)
+function parseSlug(slug) {
+  const m = /^(\d+)-([a-z0-9_-]{8})$/.exec(String(slug || ''));
+  if (!m || !roomById[m[1]]) return null;
+  const expected = roomToken(m[1]);
+  return expected.length === m[2].length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(m[2])) ? m[1] : null;
+}
 
 // ---------- 방 목록 ----------
 const rooms = ROOM_NAMES
@@ -87,22 +112,22 @@ function adminAuth(req, res, next) {
 
 app.get('/', (req, res) => res.redirect('/admin'));
 
-// 손님 페이지: QR에 담기는 주소  /r/1, /r/2 ...
-app.get('/r/:room', (req, res) => {
-  if (!roomById[req.params.room]) return res.status(404).send('없는 방입니다.');
+// 손님 페이지: QR에 담기는 주소  /r/1-a8f3k2c1 ...
+app.get('/r/:slug', (req, res) => {
+  if (!parseSlug(req.params.slug)) return res.status(404).send('<meta charset="utf-8"><body style="font-family:sans-serif;text-align:center;padding:60px 20px"><h2>잘못된 주소입니다</h2><p>방에 붙어 있는 QR을 다시 찍어 주세요.</p></body>');
   res.sendFile(path.join(__dirname, 'public', 'guest.html'));
 });
 
 // 직원 페이지
 app.get('/admin', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/admin/qr', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'qr.html')));
-app.get('/admin/config', adminAuth, (req, res) => res.json({ password: ADMIN_PASSWORD, rooms, baseUrl: baseUrl(req) }));
+app.get('/admin/config', adminAuth, (req, res) => res.json({ password: ADMIN_PASSWORD, rooms: rooms.map((r) => ({ ...r, slug: roomSlug(r.id) })), baseUrl: baseUrl(req) }));
 
-// QR 이미지
-app.get('/api/qr/:room.png', async (req, res) => {
+// QR 이미지 (직원만)
+app.get('/api/qr/:room.png', adminAuth, async (req, res) => {
   const room = roomById[req.params.room];
   if (!room) return res.status(404).end();
-  const url = `${baseUrl(req)}/r/${room.id}`;
+  const url = `${baseUrl(req)}/r/${roomSlug(room.id)}`;
   res.type('png');
   res.send(await QRCode.toBuffer(url, { width: 600, margin: 2, errorCorrectionLevel: 'M' }));
 });
@@ -111,8 +136,9 @@ app.get('/api/rooms', (req, res) => res.json(rooms));
 // ---------- 실시간 소켓 ----------
 io.on('connection', (socket) => {
   // 손님 입장
-  socket.on('guest:join', ({ room }, cb) => {
-    if (!roomById[room]) return cb && cb({ error: '없는 방입니다.' });
+  socket.on('guest:join', ({ room: slug }, cb) => {
+    const room = parseSlug(slug);
+    if (!room) return cb && cb({ error: '잘못된 주소입니다. QR을 다시 찍어 주세요.' });
     socket.data.role = 'guest';
     socket.data.room = room;
     socket.join(`room:${room}`);
