@@ -186,6 +186,18 @@ app.get('/r/:slug', (req, res) => {
 app.get('/admin', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/admin/qr', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'qr.html')));
 app.get('/admin/stats', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'stats.html')));
+// 기록 전체 삭제 (대화 + 통계). 직원 인증 필요, 통계 페이지의 버튼에서 호출
+app.post('/admin/reset', adminAuth, (req, res) => {
+  store = { messages: {}, lastRead: {} };
+  save();
+  statsLog = [];
+  try { fs.writeFileSync(STATS_FILE, ''); } catch (e) {}
+  rooms.forEach((r) => io.to(`room:${r.id}`).emit('cleared'));
+  io.to('staff').emit('reset');
+  io.to('staff').emit('rooms', allSummaries());
+  console.log('기록 전체 삭제됨');
+  res.json({ ok: true });
+});
 app.get('/admin/stats.json', adminAuth, (req, res) => res.json(buildStats(Math.min(365, Math.max(1, parseInt(req.query.days || '30', 10) || 30)))));
 app.get('/admin/config', adminAuth, (req, res) => res.json({ password: ADMIN_PASSWORD, rooms: rooms.map((r) => ({ ...r, slug: roomSlug(r.id) })), baseUrl: baseUrl(req) }));
 

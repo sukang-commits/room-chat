@@ -62,6 +62,12 @@
   <div class="card"><h2>많이 보낸 문구 <small>상위 10개</small></h2><div id="byText"></div></div>
 </div>
 
+<div class="card" style="margin-top:20px;border-color:#fecaca">
+  <h2>기록 초기화</h2>
+  <p style="font-size:13px;color:var(--muted);margin:0 0 10px">모든 방의 대화와 통계 기록을 삭제합니다. 테스트가 끝나고 실제 운영을 시작할 때 한 번 누르세요. 되돌릴 수 없습니다.</p>
+  <button id="resetBtn" style="background:#dc2626;color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer">대화 + 통계 기록 전체 삭제</button>
+  <span id="resetMsg" style="font-size:13px;margin-left:10px"></span>
+</div>
 <p class="note">손님 메시지 기준으로 집계합니다. "대화 비우기"를 해도 통계 기록은 남습니다. 응답 시간은 손님 메시지 뒤 같은 방에 직원이 처음 답장할 때까지의 시간이며, 2시간을 넘긴 경우는 평균에서 뺍니다.</p>
 
 <script>
@@ -100,6 +106,13 @@
   }
   $('days').onchange = load;
   load();
+  $('resetBtn').onclick = async () => {
+    if (!confirm('모든 방의 대화와 통계 기록을 지울까요?\n되돌릴 수 없습니다.')) return;
+    if (prompt('확인을 위해 "삭제"라고 입력하세요') !== '삭제') return;
+    const r = await fetch('/admin/reset', { method: 'POST' });
+    $('resetMsg').textContent = r.ok ? '삭제됐습니다.' : '실패했습니다. 다시 시도해 주세요.';
+    load();
+  };
 </script>
 </body>
 </html>

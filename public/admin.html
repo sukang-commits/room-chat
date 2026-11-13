@@ -294,6 +294,7 @@
     else showAlert(m);
   });
   socket.on('cleared', ({ room }) => { messages[room] = []; if (room === current) renderChat(); });
+  socket.on('reset', () => { messages = {}; pending = []; $alert.hidden = true; stopRinging(); if (current) renderChat(); });
 
   // 첫 클릭 때 소리 잠금 해제 (브라우저 정책)
   document.addEventListener('pointerdown', unlockAudio, { once: true });
