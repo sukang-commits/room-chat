@@ -13,9 +13,10 @@
   .bar .url { font-size: 13px; color: var(--muted); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
   .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 22px 18px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
-  .card h2 { margin: 0 0 4px; font-size: 28px; }
-  .card p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  .card h2 { margin: 0 0 6px; font-size: 30px; }
+  .card .title { margin: 0 0 10px; font-size: 17px; font-weight: 700; color: var(--text); }
   .card img { width: 100%; max-width: 220px; display: block; margin: 0 auto 10px; }
+  .card .desc { margin: 0 0 10px; color: var(--muted); font-size: 13px; line-height: 1.5; word-break: keep-all; }
   .card .link { font-size: 11px; color: var(--muted); word-break: break-all; }
   @media print {
     body { background: #fff; padding: 0; }
@@ -23,8 +24,9 @@
     .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .card { border: 1px dashed #999; border-radius: 0; padding: 14px 10px; }
     .card h2 { font-size: 24px; }
-    .card p { font-size: 12px; margin-bottom: 6px; }
-    .card img { max-width: 170px; }
+    .card .title { font-size: 14px; margin-bottom: 6px; }
+    .card .desc { font-size: 11px; margin-bottom: 4px; }
+    .card img { max-width: 160px; }
     .card .link { display: none; }
     @page { size: A4; margin: 10mm; }
   }
@@ -43,8 +45,9 @@
     document.getElementById('grid').innerHTML = rooms.map((r) => `
       <div class="card">
         <h2>${r.name}</h2>
-        <p>QR을 찍으면 직원에게 바로 채팅할 수 있어요</p>
+        <p class="title">불편한 점은 QR로 말씀해 주세요</p>
         <img src="/api/qr/${r.id}.png" alt="${r.name} QR">
+        <p class="desc">카메라로 찍으면 바로 채팅창이 열려요. 앱 설치나 로그인은 없어요.<br>이 방 전용 채팅이라 방 번호를 말씀하실 필요 없어요.</p>
         <div class="link">${baseUrl}/r/${r.id}</div>
       </div>`).join('');
   });
