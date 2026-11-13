@@ -57,7 +57,16 @@ Railway를 쓰려면 railway.app > New Project > Deploy from GitHub repo 에서 
 - 손님용: `public/guest.html`의 `QUICK` 배열
 - 직원용: `public/admin.html`의 `QUICK` 배열
 
-## 포스(PC)에서 알림 잘 받기
+## 포스(PC)용 전용 프로그램 (권장)
+
+브라우저는 다른 프로그램 위로 창을 올릴 수 없으므로, 포스에서는 전용 프로그램을 쓰세요.
+손님 메시지가 오면 **창이 포스 프로그램 위로 튀어나오고**, 확인하면 다시 내려갑니다. 소리는 나지 않습니다.
+
+- 설치 파일: https://github.com/sukang-commits/room-chat/releases/tag/desktop-latest (`bultoon-chat-setup-x.x.x.exe`)
+- 처음 켤 때 서버 주소와 직원 비밀번호를 한 번 입력하면 됩니다. 자세한 내용은 `desktop/README.md`.
+- `desktop/` 폴더가 바뀌어 GitHub에 올라가면 설치 파일이 자동으로 다시 빌드됩니다.
+
+## 브라우저로만 쓸 때 알림 설정
 
 손님이 메시지를 보내면 직원 화면 전체가 빨간색으로 바뀝니다.
 소리는 기본 **무음**입니다(포스에서 매장 음악이 나오는 경우를 위해). 소리가 필요하면 위쪽 "🔕 무음" 버튼을 눌러 켜면 확인할 때까지 3초마다 벨이 울리고, 설정은 그 PC에 저장됩니다.
