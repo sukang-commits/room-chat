@@ -197,6 +197,24 @@ app.get('/api/qr/:room.png', adminAuth, async (req, res) => {
   res.type('png');
   res.send(await QRCode.toBuffer(url, { width: 600, margin: 2, errorCorrectionLevel: 'M' }));
 });
+// 동그란 점 스타일 QR (SVG). 오류 정정 레벨 H라 점 스타일로도 잘 찍힘
+app.get('/api/qr/:room.svg', adminAuth, (req, res) => {
+  const room = roomById[req.params.room];
+  if (!room) return res.status(404).end();
+  const url = `${baseUrl(req)}/r/${roomSlug(room.id)}`;
+  const qr = QRCode.create(url, { errorCorrectionLevel: 'H' });
+  const n = qr.modules.size, data = qr.modules.data;
+  const dark = req.query.color ? '#' + String(req.query.color).replace(/[^0-9a-f]/gi, '').slice(0, 6) : '#1e1b4b';
+  const accent = req.query.accent ? '#' + String(req.query.accent).replace(/[^0-9a-f]/gi, '').slice(0, 6) : '#f43f5e';
+  const isFinder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
+  let dots = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    if (!data[r * n + c] || isFinder(r, c)) continue;
+    dots += `<circle cx="${c + 0.5}" cy="${r + 0.5}" r="0.43"/>`;
+  }
+  const finder = (x, y) => `<rect x="${x}" y="${y}" width="7" height="7" rx="2.2" fill="${accent}"/><rect x="${x + 1}" y="${y + 1}" width="5" height="5" rx="1.5" fill="#fff"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" rx="1" fill="${accent}"/>`;
+  res.type('svg').send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="geometricPrecision"><rect width="${n}" height="${n}" fill="#fff"/><g fill="${dark}">${dots}</g>${finder(0, 0)}${finder(n - 7, 0)}${finder(0, n - 7)}</svg>`);
+});
 app.get('/api/rooms', (req, res) => res.json(rooms));
 
 // ---------- 실시간 소켓 ----------

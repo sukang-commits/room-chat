@@ -4,50 +4,75 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>방별 QR 인쇄</title>
-<link rel="stylesheet" href="/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-  body { padding: 24px; }
-  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  :root { --ink: #1e1b4b; --accent: #f43f5e; --muted: #6b6a85; --bg1: #fff7ed; --bg2: #ffe4e6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: #f3f4f6; font-family: "Noto Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; color: var(--ink); }
+  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
   .bar h1 { font-size: 20px; margin: 0; flex: 1; }
-  .bar button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 600; }
-  .bar .url { font-size: 13px; color: var(--muted); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 22px 18px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
-  .card h2 { margin: 0 0 6px; font-size: 30px; }
-  .card .title { margin: 0 0 10px; font-size: 17px; font-weight: 700; color: var(--text); }
-  .card img { width: 100%; max-width: 220px; display: block; margin: 0 auto 10px; }
-  .card .desc { margin: 0 0 10px; color: var(--muted); font-size: 13px; line-height: 1.5; word-break: keep-all; }
-  .card .link { font-size: 11px; color: var(--muted); word-break: break-all; }
+  .bar .note { font-size: 13px; color: var(--muted); }
+  .bar button { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .bar select { font-size: 14px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 24px; }
+
+  /* ---------- 카드 ---------- */
+  .card { position: relative; background: linear-gradient(160deg, var(--bg1), var(--bg2)); border-radius: 28px; padding: 30px 26px 22px; text-align: center; overflow: hidden; break-inside: avoid; page-break-inside: avoid; box-shadow: 0 10px 30px rgba(30, 27, 75, .08); }
+  .card::before { content: ""; position: absolute; width: 260px; height: 260px; border-radius: 50%; background: rgba(244, 63, 94, .10); top: -120px; right: -90px; }
+  .card::after { content: ""; position: absolute; width: 200px; height: 200px; border-radius: 50%; background: rgba(99, 102, 241, .10); bottom: -100px; left: -80px; }
+  .card > * { position: relative; }
+  .room { display: inline-block; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; letter-spacing: .5px; margin-bottom: 14px; }
+  .headline { font-size: 30px; font-weight: 900; line-height: 1.22; letter-spacing: -0.5px; margin: 0 0 4px; word-break: keep-all; }
+  .headline em { font-style: normal; color: var(--accent); }
+  .sub { font-size: 14px; font-weight: 500; color: var(--muted); margin: 0 0 18px; }
+  .qr { background: #fff; border-radius: 22px; padding: 14px; width: 220px; margin: 0 auto 16px; box-shadow: 0 6px 20px rgba(30, 27, 75, .10); }
+  .qr img { display: block; width: 100%; height: auto; }
+  .tips { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink); margin: 0; padding: 0; list-style: none; }
+  .tips li { display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .tips .ic { display: inline-flex; width: 20px; height: 20px; border-radius: 50%; background: #fff; align-items: center; justify-content: center; font-size: 11px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .brand { margin-top: 16px; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+
   @media print {
     body { background: #fff; padding: 0; }
     .bar { display: none; }
-    .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .card { border: 1px dashed #999; border-radius: 0; padding: 14px 10px; }
-    .card h2 { font-size: 24px; }
-    .card .title { font-size: 14px; margin-bottom: 6px; }
-    .card .desc { font-size: 11px; margin-bottom: 4px; }
-    .card img { max-width: 160px; }
-    .card .link { display: none; }
     @page { size: A4; margin: 10mm; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 8mm; }
+    .card { box-shadow: none; border: 1px solid #eee; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .grid.big { grid-template-columns: 1fr; }
+    .grid.big .card { min-height: 128mm; padding-top: 40px; }
+    .grid.big .headline { font-size: 38px; }
+    .grid.big .qr { width: 260px; }
+    .grid.big .tips { font-size: 15px; }
   }
 </style>
 </head>
 <body>
 <div class="bar">
-  <h1>방별 QR 코드</h1>
-  <span class="url" id="base"></span>
+  <h1>방별 QR 카드</h1>
+  <span class="note">QR에는 방마다 다른 비밀 코드가 들어 있어 번호만 바꿔서는 다른 방에 못 들어갑니다</span>
+  <select id="size">
+    <option value="">A4 한 장에 2개 (A5 크기)</option>
+    <option value="big">A4 한 장에 1개 (크게)</option>
+  </select>
   <button onclick="window.print()">인쇄하기</button>
 </div>
 <div class="grid" id="grid"></div>
 <script>
-  fetch('/admin/config').then((r) => r.json()).then(({ rooms, baseUrl }) => {
-    document.getElementById('base').textContent = '각 방의 QR에는 비밀 코드가 들어 있어 번호를 바꿔서는 다른 방에 들어갈 수 없습니다';
+  document.getElementById('size').onchange = (e) => document.getElementById('grid').classList.toggle('big', e.target.value === 'big');
+  fetch('/admin/config').then((r) => r.json()).then(({ rooms }) => {
     document.getElementById('grid').innerHTML = rooms.map((r) => `
       <div class="card">
-        <h2>${r.name}</h2>
-        <p class="title">불편한 점은 QR로 말씀해 주세요</p>
-        <img src="/api/qr/${r.id}.png" alt="${r.name} QR">
-        <p class="desc">카메라로 찍으면 바로 채팅창이 열려요. 앱 설치나 로그인은 없어요.<br>이 방 전용 채팅이라 방 번호를 말씀하실 필요 없어요.</p>
+        <div class="room">${r.name}</div>
+        <h2 class="headline">불편한 점은<br><em>QR</em>로 말씀해 주세요</h2>
+        <p class="sub">춥거나, 덥거나, 시끄럽거나, OTT가 안 될 때</p>
+        <div class="qr"><img src="/api/qr/${r.id}.svg" alt="${r.name} QR"></div>
+        <ul class="tips">
+          <li><span class="ic">📷</span>카메라로 찍으면 바로 채팅창이 열려요</li>
+          <li><span class="ic">✓</span>앱 설치나 로그인은 없어요</li>
+          <li><span class="ic">🚪</span>이 방 전용이라 방 번호를 말씀하실 필요 없어요</li>
+        </ul>
+        <div class="brand">벌툰 채팅</div>
       </div>`).join('');
   });
 </script>
