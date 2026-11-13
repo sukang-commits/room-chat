@@ -64,7 +64,8 @@
 <header class="topbar">
   <h1>벌툰 채팅</h1>
   <span class="badge total" id="total" hidden>0</span>
-  <button id="testBtn" title="알림음과 알림창을 테스트합니다">🔔 알림 테스트</button>
+  <button id="soundBtn" title="매장 음악이 나오는 포스에서는 꺼두세요">🔕 무음</button>
+  <button id="testBtn" title="알림창을 테스트합니다">알림 테스트</button>
   <a href="/admin/qr" target="_blank">QR 인쇄</a>
 </header>
 
@@ -81,7 +82,7 @@
   </aside>
 
   <section class="panel">
-    <div class="placeholder" id="placeholder">왼쪽에서 방을 선택하세요.<br>손님이 메시지를 보내면 화면 전체에 빨간 알림이 뜨고, 확인할 때까지 벨이 울립니다.</div>
+    <div class="placeholder" id="placeholder">왼쪽에서 방을 선택하세요.<br>손님이 메시지를 보내면 화면 전체에 빨간 알림이 뜹니다. 소리는 기본 무음이며 위쪽 버튼으로 켤 수 있습니다.</div>
     <div class="chat" id="chat" hidden>
       <header class="chat-header">
         <button class="back" id="back" aria-label="목록으로">‹</button>
@@ -125,12 +126,22 @@
 
   $('quick').append(...QUICK.map((t) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = () => send(t); return b; }));
 
-  // ---------- 소리: 확인할 때까지 반복되는 벨 ----------
+  // ---------- 소리: 기본은 무음 (포스에서 매장 음악이 나오므로). 켜면 확인할 때까지 반복되는 벨 ----------
   let audioCtx, ringTimer = null;
+  let soundOn = false;
+  try { soundOn = localStorage.getItem('bultoon.sound') === 'on'; } catch (e) {}
+  function renderSoundBtn() { $('soundBtn').textContent = soundOn ? '🔔 소리 켜짐' : '🔕 무음'; $('soundBtn').title = soundOn ? '누르면 무음으로 바뀝니다' : '누르면 알림 벨이 켜집니다. 매장 음악이 나오는 포스에서는 꺼두세요'; }
+  $('soundBtn').onclick = () => {
+    soundOn = !soundOn;
+    try { localStorage.setItem('bultoon.sound', soundOn ? 'on' : 'off'); } catch (e) {}
+    renderSoundBtn();
+    if (soundOn) { unlockAudio(); ring(); } else stopRinging();
+  };
   function unlockAudio() {
     try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) {}
   }
   function ring() {
+    if (!soundOn) return;
     try {
       unlockAudio();
       const t0 = audioCtx.currentTime;
@@ -142,7 +153,7 @@
       });
     } catch (e) {}
   }
-  function startRinging() { if (ringTimer) return; ring(); ringTimer = setInterval(ring, 3000); }
+  function startRinging() { if (!soundOn || ringTimer) return; ring(); ringTimer = setInterval(ring, 3000); }
   function stopRinging() { clearInterval(ringTimer); ringTimer = null; }
 
   // ---------- 윈도우 알림창 (브라우저가 뒤에 있어도 뜸) ----------
@@ -282,6 +293,7 @@
 
   // 첫 클릭 때 소리 잠금 해제 (브라우저 정책)
   document.addEventListener('pointerdown', unlockAudio, { once: true });
+  renderSoundBtn();
   refreshSetup();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 </script>
