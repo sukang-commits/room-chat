@@ -65,6 +65,74 @@ function save() {
 function history(roomId) {
   return store.messages[roomId] || [];
 }
+// ---------- 설정: 손님 빠른 버튼 + 자동 답변 + 직원 빠른 답장 (data/settings.json, 관리 화면에서 수정) ----------
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+const DEFAULT_SETTINGS = {
+  guestButtons: [
+    { id: 'cold', label: '추워요 🥶', on: false, reply: '', image: '', keywords: [] },
+    { id: 'hot', label: '더워요 🥵', on: false, reply: '', image: '', keywords: [] },
+    { id: 'noise', label: '시끄러워요 🔇', on: false, reply: '', image: '', keywords: [] },
+    { id: 'ott', label: 'OTT 어떻게 해요? 📺', on: false, reply: '리모컨 사용 순서를 여기에 적어 주세요.\n1. \n2. \n3. \n그래도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['ott', '넷플', '유튜브', '리모컨', '티비', 'tv', '빔프'] },
+    { id: 'wifi', label: '와이파이가 안돼요', on: false, reply: '와이파이 이름: (여기에 입력)\n비밀번호: (여기에 입력)\n연결이 계속 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['와이파이', 'wifi', '비밀번호', '비번', '인터넷'] },
+  ],
+  staffReplies: ['에어컨 온도 올려드릴게요', '에어컨 온도 낮춰드릴게요', '시끄러운 방 알려주시면 주의 드릴게요', 'OTT 어떤 게 안되실까요?', '바로 가겠습니다', '카운터로 와주세요'],
+};
+let settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+try { Object.assign(settings, JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'))); } catch (e) {}
+function saveSettings() {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+}
+// 손님 메시지에 맞는 자동 답변 찾기: 버튼 id → 버튼 문구 그대로 → 키워드 포함
+function findAutoReply(text, quickId) {
+  const t = String(text || '').trim().toLowerCase();
+  const list = settings.guestButtons || [];
+  let b = quickId ? list.find((x) => x.id === quickId) : null;
+  if (!b) b = list.find((x) => String(x.label).trim().toLowerCase() === t);
+  if (!b) b = list.find((x) => (x.keywords || []).some((k) => k && t.includes(String(k).toLowerCase())));
+  if (!b || !b.on || !String(b.reply || '').trim()) return null;
+  return { text: String(b.reply).trim(), image: b.image || '' };
+}
+// 관리 화면에서 보낸 설정 검사 + 이미지(base64) 파일로 저장
+function applySettings(input) {
+  const clean = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
+  const buttons = Array.isArray(input.guestButtons) ? input.guestButtons.slice(0, 10) : [];
+  const out = [];
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  for (const b of buttons) {
+    const label = clean(b.label, 30);
+    if (!label) continue;
+    let image = clean(b.image, 200);
+    if (!/^\/uploads\/[a-z0-9]+\.(jpg|png|webp)$/.test(image)) image = '';
+    const dataUrl = typeof b.imageData === 'string' ? b.imageData : '';
+    const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+    if (m) {
+      const buf = Buffer.from(m[2], 'base64');
+      if (buf.length <= 3 * 1024 * 1024) {
+        const name = crypto.randomBytes(8).toString('hex') + '.' + (m[1] === 'jpeg' ? 'jpg' : m[1]);
+        fs.writeFileSync(path.join(UPLOAD_DIR, name), buf);
+        image = '/uploads/' + name;
+      }
+    }
+    out.push({
+      id: /^[a-z0-9_-]{1,20}$/i.test(String(b.id || '')) ? String(b.id) : 'b' + crypto.randomBytes(3).toString('hex'),
+      label, on: !!b.on, reply: clean(b.reply, 1000), image,
+      keywords: (Array.isArray(b.keywords) ? b.keywords : String(b.keywords || '').split(',')).map((k) => clean(k, 20)).filter(Boolean).slice(0, 10),
+    });
+  }
+  if (!out.length) throw new Error('손님 버튼이 하나 이상 필요합니다.');
+  const replies = (Array.isArray(input.staffReplies) ? input.staffReplies : String(input.staffReplies || '').split('\n')).map((r) => clean(r, 60)).filter(Boolean).slice(0, 12);
+  settings = { guestButtons: out, staffReplies: replies.length ? replies : DEFAULT_SETTINGS.staffReplies };
+  saveSettings();
+  // 더 이상 쓰지 않는 업로드 이미지 정리
+  try {
+    const used = new Set(out.map((b) => b.image).filter(Boolean).map((u) => u.replace('/uploads/', '')));
+    for (const f of fs.readdirSync(UPLOAD_DIR)) if (!used.has(f)) fs.unlinkSync(path.join(UPLOAD_DIR, f));
+  } catch (e) {}
+  return settings;
+}
+
 // ---------- 통계용 기록: 대화를 비워도 남는 한 줄짜리 로그 (data/stats.jsonl) ----------
 const STATS_FILE = path.join(DATA_DIR, 'stats.jsonl');
 let statsLog = [];
@@ -79,7 +147,9 @@ function buildStats(days) {
   const now = Date.now();
   const dayMs = 86400000;
   const since = now - days * dayMs;
-  const rows = statsLog.filter((r) => r.at >= since);
+  const allRows = statsLog.filter((r) => r.at >= since);
+  const autoCount = allRows.filter((r) => r.from === 'auto').length;
+  const rows = allRows.filter((r) => r.from !== 'auto');   // 자동 답변은 직원 응답으로 치지 않음
   const guest = rows.filter((r) => r.from === 'guest');
   const kst = (ts) => new Date(ts + 9 * 3600000); // 한국 시간
   const dayKey = (ts) => kst(ts).toISOString().slice(0, 10);
@@ -118,6 +188,7 @@ function buildStats(days) {
       period: guest.length,
       all: statsLog.filter((r) => r.from === 'guest').length,
       staffPeriod: rows.length - guest.length,
+      auto: autoCount,
       activeRooms: Object.values(byRoom).filter((b) => b.guest > 0).length,
       avgWait, medWait, answered: waits.length, unanswered,
     },
@@ -128,8 +199,8 @@ function buildStats(days) {
   };
 }
 
-function addMessage(roomId, from, text) {
-  const msg = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), room: roomId, from, text, at: Date.now() };
+function addMessage(roomId, from, text, extra) {
+  const msg = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), room: roomId, from, text, at: Date.now(), ...(extra || {}) };
   logStat(msg);
   if (!store.messages[roomId]) store.messages[roomId] = [];
   store.messages[roomId].push(msg);
@@ -139,7 +210,7 @@ function addMessage(roomId, from, text) {
 }
 function roomSummary(roomId) {
   const msgs = history(roomId);
-  const last = msgs[msgs.length - 1] || null;
+  const last = [...msgs].reverse().find((m) => m.from !== 'auto') || null;
   const lastRead = store.lastRead[roomId] || 0;
   const unread = msgs.filter((m) => m.from === 'guest' && m.at > lastRead).length;
   return { ...roomById[roomId], last, unread };
@@ -154,6 +225,8 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
+app.use(express.json({ limit: '8mb' }));
 
 function baseUrl(req) {
   if (BASE_URL) return BASE_URL.replace(/\/$/, '');
@@ -199,7 +272,17 @@ app.post('/admin/reset', adminAuth, (req, res) => {
   res.json({ ok: true });
 });
 app.get('/admin/stats.json', adminAuth, (req, res) => res.json(buildStats(Math.min(365, Math.max(1, parseInt(req.query.days || '30', 10) || 30)))));
-app.get('/admin/config', adminAuth, (req, res) => res.json({ password: ADMIN_PASSWORD, rooms: rooms.map((r) => ({ ...r, slug: roomSlug(r.id) })), baseUrl: baseUrl(req) }));
+app.get('/admin/config', adminAuth, (req, res) => res.json({ password: ADMIN_PASSWORD, rooms: rooms.map((r) => ({ ...r, slug: roomSlug(r.id) })), baseUrl: baseUrl(req), staffReplies: settings.staffReplies }));
+app.get('/api/guest-config', (req, res) => res.json({ buttons: settings.guestButtons.map((b) => ({ id: b.id, label: b.label })) }));
+app.get('/admin/settings', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'settings.html')));
+app.get('/admin/settings.json', adminAuth, (req, res) => res.json(settings));
+app.post('/admin/settings', adminAuth, (req, res) => {
+  try {
+    const saved = applySettings(req.body || {});
+    io.emit('settings');            // 손님·직원 화면 버튼 즉시 갱신
+    res.json(saved);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 
 // QR 이미지 (직원만)
 app.get('/api/qr/:room.png', adminAuth, async (req, res) => {
@@ -242,7 +325,7 @@ io.on('connection', (socket) => {
   });
 
   // 손님 메시지
-  socket.on('guest:message', ({ text }, cb) => {
+  socket.on('guest:message', ({ text, quick }, cb) => {
     const room = socket.data.room;
     if (socket.data.role !== 'guest' || !room) return;
     text = String(text || '').trim().slice(0, 500);
@@ -250,8 +333,15 @@ io.on('connection', (socket) => {
     const msg = addMessage(room, 'guest', text);
     io.to(`room:${room}`).emit('message', msg);
     io.to('staff').emit('message', msg);
+    // 자동 답변: 직원 알림은 그대로 가고, 손님에게는 즉시 안내가 뜸
+    const auto = findAutoReply(text, typeof quick === 'string' ? quick : '');
+    if (auto) {
+      const am = addMessage(room, 'auto', auto.text, auto.image ? { image: auto.image } : {});
+      io.to(`room:${room}`).emit('message', am);
+      io.to('staff').emit('message', am);
+    }
     io.to('staff').emit('rooms', allSummaries());
-    cb && cb({ ok: true });
+    cb && cb({ ok: true, auto: !!auto });
   });
 
   // 직원 입장

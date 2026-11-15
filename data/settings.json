@@ -1,0 +1,62 @@
+{
+  "guestButtons": [
+    {
+      "id": "cold",
+      "label": "추워요 🥶",
+      "on": false,
+      "reply": "",
+      "image": "",
+      "keywords": []
+    },
+    {
+      "id": "hot",
+      "label": "더워요 🥵",
+      "on": false,
+      "reply": "",
+      "image": "",
+      "keywords": []
+    },
+    {
+      "id": "noise",
+      "label": "시끄러워요 🔇",
+      "on": false,
+      "reply": "",
+      "image": "",
+      "keywords": []
+    },
+    {
+      "id": "ott",
+      "label": "OTT 어떻게 해요? 📺",
+      "on": false,
+      "reply": "리모컨 사용 순서를 여기에 적어 주세요.\n1. \n2. \n3. \n그래도 안 되면 직원이 바로 가겠습니다.",
+      "image": "",
+      "keywords": [
+        "ott",
+        "넷플",
+        "유튜브",
+        "리모컨",
+        "티비",
+        "tv",
+        "빔프"
+      ]
+    },
+    {
+      "id": "wifi",
+      "label": "와이파이가 안돼요",
+      "on": true,
+      "reply": "와이파이 이름: BULTOON_5G\n비밀번호: bultoon1234\n연결이 계속 안 되면 직원이 바로 가겠습니다.",
+      "image": "/uploads/232fb3850473af18.jpg",
+      "keywords": [
+        "와이파이",
+        "wifi",
+        "비밀번호",
+        "비번",
+        "인터넷"
+      ]
+    }
+  ],
+  "staffReplies": [
+    "바로 가겠습니다",
+    "카운터로 와주세요"
+  ]
+}
