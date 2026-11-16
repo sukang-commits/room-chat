@@ -84,15 +84,30 @@ function saveSettings() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
 }
-// 손님 메시지에 맞는 자동 답변 찾기: 버튼 id → 버튼 문구 그대로 → 키워드 포함
-function findAutoReply(text, quickId) {
+// "1-10, 15, 22" 같은 방 범위 문자열 -> 방 id 배열 (없는 방은 무시)
+function parseRoomSpec(spec) {
+  const ids = new Set();
+  String(spec || '').split(/[,\s]+/).filter(Boolean).forEach((tok) => {
+    const m = /^(\d+)(?:-(\d+))?$/.exec(tok);
+    if (!m) return;
+    const a = parseInt(m[1], 10), b = m[2] ? parseInt(m[2], 10) : a;
+    for (let i = Math.min(a, b); i <= Math.max(a, b) && i <= 500; i++) if (roomById[String(i)]) ids.add(String(i));
+  });
+  return [...ids].sort((x, y) => Number(x) - Number(y));
+}
+// 손님 메시지에 맞는 자동 답변 찾기: 버튼 id → 버튼 문구 그대로 → 키워드 포함. 방별 변형이 있으면 그 방 것을 우선
+function findAutoReply(text, quickId, roomId) {
   const t = String(text || '').trim().toLowerCase();
   const list = settings.guestButtons || [];
   let b = quickId ? list.find((x) => x.id === quickId) : null;
   if (!b) b = list.find((x) => String(x.label).trim().toLowerCase() === t);
   if (!b) b = list.find((x) => (x.keywords || []).some((k) => k && t.includes(String(k).toLowerCase())));
-  if (!b || !b.on || !String(b.reply || '').trim()) return null;
-  return { text: String(b.reply).trim(), image: b.image || '' };
+  if (!b || !b.on) return null;
+  const v = (b.variants || []).find((x) => (x.roomIds || []).includes(String(roomId)));
+  const reply = String((v && v.reply) || b.reply || '').trim();
+  const image = (v && v.image) || b.image || '';
+  if (!reply) return null;
+  return { text: reply, image };
 }
 // 관리 화면에서 보낸 설정 검사 + 이미지(base64) 파일로 저장
 function applySettings(input) {
@@ -100,12 +115,11 @@ function applySettings(input) {
   const buttons = Array.isArray(input.guestButtons) ? input.guestButtons.slice(0, 10) : [];
   const out = [];
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  for (const b of buttons) {
-    const label = clean(b.label, 30);
-    if (!label) continue;
-    let image = clean(b.image, 200);
+  // 기존 이미지 경로 검사 + 새 이미지(base64)는 파일로 저장
+  const resolveImage = (obj) => {
+    let image = clean(obj.image, 200);
     if (!/^\/uploads\/[a-z0-9]+\.(jpg|png|webp)$/.test(image)) image = '';
-    const dataUrl = typeof b.imageData === 'string' ? b.imageData : '';
+    const dataUrl = typeof obj.imageData === 'string' ? obj.imageData : '';
     const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
     if (m) {
       const buf = Buffer.from(m[2], 'base64');
@@ -115,10 +129,25 @@ function applySettings(input) {
         image = '/uploads/' + name;
       }
     }
+    return image;
+  };
+  const newId = (prefix) => prefix + crypto.randomBytes(3).toString('hex');
+  for (const b of buttons) {
+    const label = clean(b.label, 30);
+    if (!label) continue;
+    // 방별 변형(묶음): 방 범위 + 다른 글/사진. 범위가 비면 버림
+    const variants = [];
+    for (const v of (Array.isArray(b.variants) ? b.variants.slice(0, 20) : [])) {
+      const rooms = clean(v.rooms, 200);
+      const roomIds = parseRoomSpec(rooms);
+      if (!roomIds.length) continue;
+      variants.push({ id: /^[a-z0-9_-]{1,20}$/i.test(String(v.id || '')) ? String(v.id) : newId('v'), rooms, roomIds, reply: clean(v.reply, 1000), image: resolveImage(v) });
+    }
     out.push({
-      id: /^[a-z0-9_-]{1,20}$/i.test(String(b.id || '')) ? String(b.id) : 'b' + crypto.randomBytes(3).toString('hex'),
-      label, on: !!b.on, reply: clean(b.reply, 1000), image,
+      id: /^[a-z0-9_-]{1,20}$/i.test(String(b.id || '')) ? String(b.id) : newId('b'),
+      label, on: !!b.on, reply: clean(b.reply, 1000), image: resolveImage(b),
       keywords: (Array.isArray(b.keywords) ? b.keywords : String(b.keywords || '').split(',')).map((k) => clean(k, 20)).filter(Boolean).slice(0, 10),
+      variants,
     });
   }
   if (!out.length) throw new Error('손님 버튼이 하나 이상 필요합니다.');
@@ -127,7 +156,7 @@ function applySettings(input) {
   saveSettings();
   // 더 이상 쓰지 않는 업로드 이미지 정리
   try {
-    const used = new Set(out.map((b) => b.image).filter(Boolean).map((u) => u.replace('/uploads/', '')));
+    const used = new Set(out.flatMap((b) => [b.image, ...(b.variants || []).map((v) => v.image)]).filter(Boolean).map((u) => u.replace('/uploads/', '')));
     for (const f of fs.readdirSync(UPLOAD_DIR)) if (!used.has(f)) fs.unlinkSync(path.join(UPLOAD_DIR, f));
   } catch (e) {}
   return settings;
@@ -275,7 +304,7 @@ app.get('/admin/stats.json', adminAuth, (req, res) => res.json(buildStats(Math.m
 app.get('/admin/config', adminAuth, (req, res) => res.json({ password: ADMIN_PASSWORD, rooms: rooms.map((r) => ({ ...r, slug: roomSlug(r.id) })), baseUrl: baseUrl(req), staffReplies: settings.staffReplies }));
 app.get('/api/guest-config', (req, res) => res.json({ buttons: settings.guestButtons.map((b) => ({ id: b.id, label: b.label })) }));
 app.get('/admin/settings', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'settings.html')));
-app.get('/admin/settings.json', adminAuth, (req, res) => res.json(settings));
+app.get('/admin/settings.json', adminAuth, (req, res) => res.json({ ...settings, roomCount: rooms.length, roomNames: Object.fromEntries(rooms.map((r) => [r.id, r.name])) }));
 app.post('/admin/settings', adminAuth, (req, res) => {
   try {
     const saved = applySettings(req.body || {});
@@ -334,7 +363,7 @@ io.on('connection', (socket) => {
     io.to(`room:${room}`).emit('message', msg);
     io.to('staff').emit('message', msg);
     // 자동 답변: 직원 알림은 그대로 가고, 손님에게는 즉시 안내가 뜸
-    const auto = findAutoReply(text, typeof quick === 'string' ? quick : '');
+    const auto = findAutoReply(text, typeof quick === 'string' ? quick : '', room);
     if (auto) {
       const am = addMessage(room, 'auto', auto.text, auto.image ? { image: auto.image } : {});
       io.to(`room:${room}`).emit('message', am);

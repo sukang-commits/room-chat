@@ -34,6 +34,14 @@
   .preview { background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 10px 12px; font-size: 14px; white-space: pre-line; max-width: 320px; }
   .preview .tag { display: block; font-size: 11px; font-weight: 700; color: #b45309; margin-bottom: 3px; }
   .preview img { display: block; max-width: 100%; border-radius: 8px; margin-top: 8px; }
+  .variants { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
+  .variants > .k { display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .variants .hint { font-size: 12px; color: var(--muted); margin: 0 0 8px; line-height: 1.5; }
+  .variant { background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+  .variant .rooms-in { width: 220px; max-width: 100%; }
+  .variant .count { font-size: 12px; color: var(--muted); }
+  .variant .count.bad { color: #b91c1c; }
+  .addv { border: 1px dashed var(--line); background: #fff; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: var(--muted); }
   .add { border: 1px dashed var(--line); background: transparent; border-radius: 12px; padding: 12px; width: 100%; font-size: 14px; color: var(--muted); }
   .save { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 12px; align-items: center; justify-content: center; }
   .save button { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 12px 28px; font-size: 16px; font-weight: 700; }
@@ -102,9 +110,17 @@
           <label class="k">키워드 (손님이 직접 타자로 쳐도 이 단어가 들어 있으면 자동 답변. 쉼표로 구분)</label>
           <input type="text" data-k="keywords" value="${esc((b.keywords || []).join(', '))}" placeholder="예) 와이파이, wifi, 비밀번호">
         </div>
-        ${b.on && (b.reply || '').trim() ? `<div class="row"><label class="k">손님 화면 미리보기</label><div class="preview"><span class="tag">💡 자동 안내</span>${esc(b.reply.trim())}${imgSrc ? `<img src="${esc(imgSrc)}" alt="">` : ''}</div></div>` : ''}`;
+        ${b.on && (b.reply || '').trim() ? `<div class="row"><label class="k">손님 화면 미리보기 (기본)</label><div class="preview"><span class="tag">💡 자동 안내</span>${esc(b.reply.trim())}${imgSrc ? `<img src="${esc(imgSrc)}" alt="">` : ''}</div></div>` : ''}
+        <div class="variants">
+          <span class="k">방마다 다르게 보내기</span>
+          <p class="hint">방 종류가 다르면 묶음을 추가하세요. 예: 빔프로젝터 방은 "1-10, 15", TV 방은 "11-14, 16-40". 묶음에 없는 방은 위의 기본 내용이 나갑니다. 글을 비우면 기본 글에 사진만 바꿔 보낼 수도 있습니다.</p>
+          <div class="vlist"></div>
+          <button type="button" class="addv">+ 방 묶음 추가</button>
+        </div>`;
+      renderVariants(card, b);
       // 입력 반영
-      card.querySelectorAll('[data-k]').forEach((el) => {
+      // 기본 칸의 입력 처리 (묶음 안의 칸은 renderVariants가 따로 처리)
+      [...card.querySelectorAll('[data-k]')].filter((el) => !el.closest('.variant')).forEach((el) => {
         el.oninput = el.onchange = () => {
           const k = el.dataset.k;
           if (k === 'on') { b.on = el.checked; render(); }
@@ -113,7 +129,7 @@
           if (k === 'reply') { const pv = card.querySelector('.preview'); if (pv) pv.childNodes[1].textContent = el.value.trim(); }
         };
       });
-      card.querySelectorAll('[data-act]').forEach((el) => {
+      [...card.querySelectorAll('[data-act]')].filter((el) => !el.closest('.variant')).forEach((el) => {
         const act = el.dataset.act;
         if (act === 'up') el.onclick = () => { [data.guestButtons[i - 1], data.guestButtons[i]] = [data.guestButtons[i], data.guestButtons[i - 1]]; render(); };
         if (act === 'down') el.onclick = () => { [data.guestButtons[i + 1], data.guestButtons[i]] = [data.guestButtons[i], data.guestButtons[i + 1]]; render(); };
@@ -123,6 +139,57 @@
       });
       wrap.appendChild(card);
     });
+  }
+
+  // "1-10, 15" -> 방 id 목록 (화면 안내용. 실제 검사는 서버가 다시 함)
+  function parseRooms(spec) {
+    const ids = new Set();
+    String(spec || '').split(/[,\s]+/).filter(Boolean).forEach((tok) => {
+      const m = /^(\d+)(?:-(\d+))?$/.exec(tok); if (!m) return;
+      const a = +m[1], c = m[2] ? +m[2] : a;
+      for (let i = Math.min(a, c); i <= Math.max(a, c) && i <= 500; i++) if (i >= 1 && i <= (data.roomCount || 0)) ids.add(i);
+    });
+    return [...ids].sort((x, y) => x - y);
+  }
+  function renderVariants(card, b) {
+    const list = card.querySelector('.vlist');
+    list.innerHTML = '';
+    b.variants = b.variants || [];
+    b.variants.forEach((v, j) => {
+      const vs = v.imageData || v.image || '';
+      const ids = parseRooms(v.rooms);
+      const el = document.createElement('div');
+      el.className = 'variant';
+      el.innerHTML = `
+        <div class="row">
+          <input type="text" class="rooms-in" data-k="rooms" value="${esc(v.rooms)}" placeholder="방 번호 (예: 1-10, 15, 22)">
+          <span class="count ${ids.length ? '' : 'bad'}">${ids.length ? ids.length + '개 방: ' + ids.join(', ') : '방 번호를 입력하세요'}</span>
+          <div class="btns"><button type="button" class="del" data-act="vdel">묶음 삭제</button></div>
+        </div>
+        <div class="row">
+          <label class="k">이 방들에 보낼 글 (비우면 기본 글)</label>
+          <textarea data-k="reply" placeholder="이 방들만 다른 안내">${esc(v.reply)}</textarea>
+        </div>
+        <div class="row">
+          <label class="k">이 방들에 보낼 사진 (비우면 기본 사진)</label>
+          <div class="img">
+            ${vs ? `<img src="${esc(vs)}" alt="">` : '<div class="none">사진 없음</div>'}
+            <label class="file">사진 선택<input type="file" accept="image/*" data-act="vimg"></label>
+            ${vs ? '<button type="button" data-act="vimgdel" style="border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;font-size:13px;color:#b91c1c">사진 삭제</button>' : ''}
+          </div>
+        </div>`;
+      el.querySelectorAll('[data-k]').forEach((inp) => {
+        inp.oninput = () => {
+          v[inp.dataset.k] = inp.value;
+          if (inp.dataset.k === 'rooms') { const c = parseRooms(inp.value); const sp = el.querySelector('.count'); sp.className = 'count ' + (c.length ? '' : 'bad'); sp.textContent = c.length ? c.length + '개 방: ' + c.join(', ') : '방 번호를 입력하세요'; }
+        };
+      });
+      el.querySelector('[data-act=vdel]').onclick = () => { if (confirm('이 방 묶음을 지울까요?')) { b.variants.splice(j, 1); renderVariants(card, b); } };
+      el.querySelector('[data-act=vimg]').onchange = (e) => { const f = e.target.files[0]; if (f) shrink(f).then((d) => { v.imageData = d; renderVariants(card, b); }); };
+      const vd = el.querySelector('[data-act=vimgdel]'); if (vd) vd.onclick = () => { v.image = ''; v.imageData = ''; renderVariants(card, b); };
+      list.appendChild(el);
+    });
+    card.querySelector('.addv').onclick = () => { b.variants.push({ id: 'v' + Math.random().toString(36).slice(2, 8), rooms: '', reply: '', image: '' }); renderVariants(card, b); };
   }
 
   // 사진을 긴 쪽 1200px 이하 JPEG로 줄여서 올림 (용량 절약)

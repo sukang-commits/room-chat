@@ -6,7 +6,8 @@
       "on": false,
       "reply": "",
       "image": "",
-      "keywords": []
+      "keywords": [],
+      "variants": []
     },
     {
       "id": "hot",
@@ -14,7 +15,8 @@
       "on": false,
       "reply": "",
       "image": "",
-      "keywords": []
+      "keywords": [],
+      "variants": []
     },
     {
       "id": "noise",
@@ -22,13 +24,14 @@
       "on": false,
       "reply": "",
       "image": "",
-      "keywords": []
+      "keywords": [],
+      "variants": []
     },
     {
       "id": "ott",
       "label": "OTT 어떻게 해요? 📺",
-      "on": false,
-      "reply": "리모컨 사용 순서를 여기에 적어 주세요.\n1. \n2. \n3. \n그래도 안 되면 직원이 바로 가겠습니다.",
+      "on": true,
+      "reply": "[기본] TV 리모컨: 전원 → 홈 → 넷플릭스",
       "image": "",
       "keywords": [
         "ott",
@@ -38,6 +41,22 @@
         "티비",
         "tv",
         "빔프"
+      ],
+      "variants": [
+        {
+          "id": "vrqvrn9",
+          "rooms": "1-5, 9",
+          "roomIds": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "9"
+          ],
+          "reply": "",
+          "image": "/uploads/421fee50e8e0f65c.jpg"
+        }
       ]
     },
     {
@@ -52,7 +71,8 @@
         "비밀번호",
         "비번",
         "인터넷"
-      ]
+      ],
+      "variants": []
     }
   ],
   "staffReplies": [
