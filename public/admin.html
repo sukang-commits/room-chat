@@ -14,6 +14,10 @@
   .topbar h1 { font-size: 16px; margin: 0; flex: 1; }
   .topbar a, .topbar button { color: #fff; background: #374151; border: 0; border-radius: 8px; padding: 7px 10px; font-size: 12px; text-decoration: none; white-space: nowrap; }
   .topbar .total { background: var(--badge); }
+  .menu { position: relative; }
+  .menu-list { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.15); min-width: 200px; z-index: 50; padding: 6px; }
+  .menu-list a { display: block; color: var(--text); background: none; padding: 10px 12px; font-size: 14px; border-radius: 8px; }
+  .menu-list a:hover { background: #f3f4f6; }
   .topbar button.warn { background: #f59e0b; color: #111; font-weight: 700; }
   .layout { flex: 1; display: flex; min-height: 0; }
   .sidebar { width: 300px; background: var(--card); border-right: 1px solid var(--line); overflow-y: auto; }
@@ -72,9 +76,15 @@
   <span class="badge total" id="total" hidden>0</span>
   <button id="soundBtn" title="매장 음악이 나오는 포스에서는 꺼두세요">🔕 무음</button>
   <button id="testBtn" title="알림창을 테스트합니다">알림 테스트</button>
-  <a href="/admin/stats" target="_blank">통계</a>
-  <a href="/admin/qr" target="_blank">QR</a>
-  <a href="/admin/settings" target="_blank" title="손님 버튼·자동 답변·직원 답장 문구">설정</a>
+  <div class="menu">
+    <button id="menuBtn">메뉴 ▾</button>
+    <div class="menu-list" id="menuList" hidden>
+      <a href="/admin/log" target="_blank">📋 대화 기록</a>
+      <a href="/admin/stats" target="_blank">📊 통계</a>
+      <a href="/admin/qr" target="_blank">🖨 QR 인쇄</a>
+      <a href="/admin/settings" target="_blank">⚙️ 설정 (버튼·자동 답변)</a>
+    </div>
+  </div>
 </header>
 
 <div class="setup" id="setup" hidden>
@@ -301,7 +311,14 @@
       if (res.error) { alert(res.error); return; }
       rooms = res.rooms; messages = res.messages || {};
       renderRooms(); if (current) renderChat();
-      if (rooms.some((r) => r.unread)) startRinging(); // 꺼져 있던 동안 온 메시지
+      // 꺼져 있던 동안 온 메시지: 안 읽은 방이 있으면 가장 최근 것으로 바로 전체화면 알림
+      const unreadRooms = rooms.filter((r) => r.unread);
+      if (unreadRooms.length && $alert.hidden) {
+        const lastOf = (r) => (messages[r.id] || []).filter((m) => m.from === 'guest').pop();
+        const latest = unreadRooms.map(lastOf).filter(Boolean).sort((a, b) => b.at - a.at)[0];
+        unreadRooms.forEach((r) => { const m = lastOf(r); if (m && m !== latest) pending.push(m); });
+        if (latest) showAlert(latest); else startRinging();
+      }
     });
   }
   socket.on('connect', join);
@@ -317,6 +334,10 @@
   socket.on('cleared', ({ room }) => { messages[room] = []; if (room === current) renderChat(); });
   socket.on('settings', () => loadConfig().catch(() => {}));
   socket.on('reset', () => { messages = {}; pending = []; $alert.hidden = true; stopRinging(); if (current) renderChat(); });
+
+  // 상단 메뉴 열고 닫기
+  $('menuBtn').onclick = (e) => { e.stopPropagation(); $('menuList').hidden = !$('menuList').hidden; };
+  document.addEventListener('click', () => { $('menuList').hidden = true; });
 
   // 첫 클릭 때 소리 잠금 해제 (브라우저 정책)
   document.addEventListener('pointerdown', unlockAudio, { once: true });

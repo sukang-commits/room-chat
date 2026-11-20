@@ -168,6 +168,7 @@ let statsLog = [];
 try { statsLog = fs.readFileSync(STATS_FILE, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch (e) {}
 function logStat(msg) {
   const row = { room: msg.room, from: msg.from, text: msg.text, at: msg.at };
+  if (msg.image) row.image = msg.image;
   statsLog.push(row);
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.appendFile(STATS_FILE, JSON.stringify(row) + '\n', () => {});
@@ -178,7 +179,7 @@ function buildStats(days) {
   const since = now - days * dayMs;
   const allRows = statsLog.filter((r) => r.at >= since);
   const autoCount = allRows.filter((r) => r.from === 'auto').length;
-  const rows = allRows.filter((r) => r.from !== 'auto');   // 자동 답변은 직원 응답으로 치지 않음
+  const rows = allRows.filter((r) => r.from === 'guest' || r.from === 'staff');   // 자동 답변·퇴실 표시는 직원 응답으로 치지 않음
   const guest = rows.filter((r) => r.from === 'guest');
   const kst = (ts) => new Date(ts + 9 * 3600000); // 한국 시간
   const dayKey = (ts) => kst(ts).toISOString().slice(0, 10);
@@ -300,6 +301,40 @@ app.post('/admin/reset', adminAuth, (req, res) => {
   console.log('기록 전체 삭제됨');
   res.json({ ok: true });
 });
+// ---------- 대화 기록 (퇴실로 지운 것 포함) ----------
+const KST_OFFSET = 9 * 3600000;
+function kstDayStart(ymd) {               // 'YYYY-MM-DD'(한국 날짜) -> 그날 00:00 KST 의 epoch ms
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || ''));
+  if (!m) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3]) - KST_OFFSET;
+}
+function queryLog(q) {
+  const today = new Date(Date.now() + KST_OFFSET).toISOString().slice(0, 10);
+  const from = kstDayStart(q.from) ?? kstDayStart(today);
+  const to = (kstDayStart(q.to) ?? kstDayStart(today)) + 86400000 - 1;
+  const room = q.room && roomById[q.room] ? String(q.room) : '';
+  const text = String(q.q || '').trim().toLowerCase();
+  const rows = statsLog.filter((r) => r.at >= from && r.at <= to && (!room || r.room === room) && (!text || String(r.text).toLowerCase().includes(text)));
+  return { from, to, room, text, total: rows.length, rows };
+}
+const fmtKST = (ts) => { const d = new Date(ts + KST_OFFSET); return d.toISOString().slice(0, 10) + ' ' + d.toISOString().slice(11, 16); };
+const FROM_LABEL = { guest: '손님', staff: '직원', auto: '자동 답변', system: '시스템' };
+app.get('/admin/log', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'log.html')));
+app.get('/admin/log.json', adminAuth, (req, res) => {
+  const r = queryLog(req.query);
+  const LIMIT = 3000;
+  res.json({ ...r, truncated: r.rows.length > LIMIT, rows: r.rows.slice(-LIMIT).map((x) => ({ ...x, roomName: (roomById[x.room] || { name: x.room }).name })), roomNames: Object.fromEntries(rooms.map((x) => [x.id, x.name])) });
+});
+app.get('/admin/log.csv', adminAuth, (req, res) => {
+  const r = queryLog(req.query);
+  const cell = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const lines = ['일시,방,보낸 쪽,내용,사진'];
+  r.rows.forEach((x) => lines.push([fmtKST(x.at), (roomById[x.room] || { name: x.room }).name, FROM_LABEL[x.from] || x.from, x.text, x.image ? `${baseUrl(req)}${x.image}` : ''].map(cell).join(',')));
+  const name = `bultoon-chat-${new Date(r.from + KST_OFFSET).toISOString().slice(0, 10)}_${new Date(r.to + KST_OFFSET).toISOString().slice(0, 10)}${r.room ? '_' + r.room + '번방' : ''}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+  res.send('\ufeff' + lines.join('\r\n'));   // BOM: 엑셀에서 한글 깨짐 방지
+});
 app.get('/admin/stats.json', adminAuth, (req, res) => res.json(buildStats(Math.min(365, Math.max(1, parseInt(req.query.days || '30', 10) || 30)))));
 app.get('/admin/config', adminAuth, (req, res) => res.json({ password: ADMIN_PASSWORD, rooms: rooms.map((r) => ({ ...r, slug: roomSlug(r.id) })), baseUrl: baseUrl(req), staffReplies: settings.staffReplies }));
 app.get('/api/guest-config', (req, res) => res.json({ buttons: settings.guestButtons.map((b) => ({ id: b.id, label: b.label })) }));
@@ -404,6 +439,7 @@ io.on('connection', (socket) => {
   // 직원이 방 대화 비우기 (퇴실 처리)
   socket.on('staff:clear', ({ room }) => {
     if (socket.data.role !== 'staff' || !roomById[room]) return;
+    if (history(room).length) logStat({ room, from: 'system', text: '퇴실 처리 (대화 비우기)', at: Date.now() });
     store.messages[room] = [];
     store.lastRead[room] = Date.now();
     save();
