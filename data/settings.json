@@ -45,24 +45,10 @@
       "variants": []
     },
     {
-      "id": "adult",
-      "label": "성인인증 비밀번호가 뭐예요? 🔑",
-      "on": true,
-      "reply": "성인인증 비밀번호: 1234",
-      "image": "",
-      "keywords": [
-        "성인",
-        "인증",
-        "성인인증",
-        "19금"
-      ],
-      "variants": []
-    },
-    {
       "id": "wifi",
       "label": "와이파이가 안돼요",
-      "on": true,
-      "reply": "와이파이: BULTOON / 비밀번호: 5678",
+      "on": false,
+      "reply": "와이파이 이름: (여기에 입력)\n비밀번호: (여기에 입력)\n연결이 계속 안 되면 직원이 바로 가겠습니다.",
       "image": "",
       "keywords": [
         "와이파이",
@@ -82,5 +68,7 @@
     "바로 가겠습니다",
     "카운터로 와주세요"
   ],
-  "migrations": []
+  "migrations": [
+    "adult-pin"
+  ]
 }

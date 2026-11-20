@@ -78,6 +78,7 @@ const DEFAULT_SETTINGS = {
     { id: 'wifi', label: '와이파이가 안돼요', on: false, reply: '와이파이 이름: (여기에 입력)\n비밀번호: (여기에 입력)\n연결이 계속 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['와이파이', 'wifi', '비밀번호', '비번', '인터넷'] },
   ],
   staffReplies: ['에어컨 온도 올려드릴게요', '에어컨 온도 낮춰드릴게요', '시끄러운 방 알려주시면 주의 드릴게요', 'OTT 어떤 게 안되실까요?', '바로 가겠습니다', '카운터로 와주세요'],
+  migrations: ['adult-pin'],   // 기본값에는 이미 들어 있으므로 다시 끼워 넣지 않음
 };
 let settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
 let hadSavedSettings = false;
