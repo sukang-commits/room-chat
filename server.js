@@ -78,6 +78,8 @@ const DEFAULT_SETTINGS = {
     { id: 'wifi', label: '와이파이가 안돼요', on: false, reply: '와이파이 이름: (여기에 입력)\n비밀번호: (여기에 입력)\n연결이 계속 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['와이파이', 'wifi', '비밀번호', '비번', '인터넷'] },
   ],
   staffReplies: ['에어컨 온도 올려드릴게요', '에어컨 온도 낮춰드릴게요', '시끄러운 방 알려주시면 주의 드릴게요', 'OTT 어떤 게 안되실까요?', '바로 가겠습니다', '카운터로 와주세요'],
+  // 손님 채팅 맨 위에 항상 보이는 안내 카드 (리뷰 이벤트 등)
+  event: { on: false, title: '리뷰 이벤트 🎁', text: '네이버 리뷰 남기고 카운터에서 뽑기권 받아 가세요!', link: '', linkLabel: '네이버 리뷰 쓰러 가기', image: '' },
   migrations: ['adult-pin'],   // 기본값에는 이미 들어 있으므로 다시 끼워 넣지 않음
 };
 let settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
@@ -174,11 +176,15 @@ function applySettings(input) {
   }
   if (!out.length) throw new Error('손님 버튼이 하나 이상 필요합니다.');
   const replies = (Array.isArray(input.staffReplies) ? input.staffReplies : String(input.staffReplies || '').split('\n')).map((r) => clean(r, 60)).filter(Boolean).slice(0, 12);
-  settings = { ...settings, guestButtons: out, staffReplies: replies.length ? replies : DEFAULT_SETTINGS.staffReplies };
+  const ev = input.event && typeof input.event === 'object' ? input.event : {};
+  let link = clean(ev.link, 300);
+  if (!/^https?:\/\/[^\s]+$/i.test(link)) link = '';
+  const event = { on: !!ev.on, title: clean(ev.title, 40), text: clean(ev.text, 500), link, linkLabel: clean(ev.linkLabel, 30) || '자세히 보기', image: resolveImage(ev) };
+  settings = { ...settings, guestButtons: out, staffReplies: replies.length ? replies : DEFAULT_SETTINGS.staffReplies, event };
   saveSettings();
   // 더 이상 쓰지 않는 업로드 이미지 정리
   try {
-    const used = new Set(out.flatMap((b) => [b.image, ...(b.variants || []).map((v) => v.image)]).filter(Boolean).map((u) => u.replace('/uploads/', '')));
+    const used = new Set([...out.flatMap((b) => [b.image, ...(b.variants || []).map((v) => v.image)]), event.image].filter(Boolean).map((u) => u.replace('/uploads/', '')));
     for (const f of fs.readdirSync(UPLOAD_DIR)) if (!used.has(f)) fs.unlinkSync(path.join(UPLOAD_DIR, f));
   } catch (e) {}
   return settings;
@@ -359,7 +365,10 @@ app.get('/admin/log.csv', adminAuth, (req, res) => {
 });
 app.get('/admin/stats.json', adminAuth, (req, res) => res.json(buildStats(Math.min(365, Math.max(1, parseInt(req.query.days || '30', 10) || 30)))));
 app.get('/admin/config', adminAuth, (req, res) => res.json({ password: ADMIN_PASSWORD, rooms: rooms.map((r) => ({ ...r, slug: roomSlug(r.id) })), baseUrl: baseUrl(req), staffReplies: settings.staffReplies }));
-app.get('/api/guest-config', (req, res) => res.json({ buttons: settings.guestButtons.map((b) => ({ id: b.id, label: b.label })) }));
+app.get('/api/guest-config', (req, res) => res.json({
+  buttons: settings.guestButtons.map((b) => ({ id: b.id, label: b.label })),
+  event: settings.event && settings.event.on && (settings.event.text || settings.event.title) ? settings.event : null,
+}));
 app.get('/admin/settings', adminAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'settings.html')));
 app.get('/admin/settings.json', adminAuth, (req, res) => res.json({ ...settings, roomCount: rooms.length, roomNames: Object.fromEntries(rooms.map((r) => [r.id, r.name])) }));
 app.post('/admin/settings', adminAuth, (req, res) => {

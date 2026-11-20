@@ -10,6 +10,14 @@
   body { height: 100dvh; }
   .chat-header .dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca3af; }
   .chat-header .dot.on { background: #22c55e; }
+  .event { margin: 10px 12px 0; background: linear-gradient(135deg, #fff1f2, #fff7ed); border: 1px solid #fecdd3; border-radius: 16px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(244,63,94,.08); }
+  .event .head { display: flex; align-items: center; gap: 8px; }
+  .event .head b { flex: 1; font-size: 15px; color: #9f1239; }
+  .event .head button { border: 0; background: none; color: #be123c; font-size: 12px; padding: 4px 6px; }
+  .event .body { margin-top: 6px; font-size: 14px; line-height: 1.5; white-space: pre-line; color: #3f3f46; }
+  .event img { display: block; width: 100%; border-radius: 10px; margin-top: 8px; }
+  .event a.go { display: block; margin-top: 10px; background: #e11d48; color: #fff; text-align: center; text-decoration: none; font-weight: 700; padding: 11px; border-radius: 12px; font-size: 15px; }
+  .event.folded .body, .event.folded img, .event.folded a.go { display: none; }
   .msg.auto { background: #fffbeb; border: 1px solid #fde68a; white-space: pre-line; }
   .msg.auto .tag { display: block; font-size: 11px; font-weight: 700; color: #b45309; margin-bottom: 3px; }
   .msg img { display: block; max-width: 100%; border-radius: 10px; margin-top: 8px; }
@@ -23,6 +31,8 @@
       <div class="sub"><span class="dot" id="dot"></span> 벌툰 · 불편하신 점을 남겨 주시면 직원이 바로 확인합니다</div>
     </div>
   </header>
+
+  <div class="event" id="event" hidden></div>
 
   <main class="messages" id="messages">
     <div class="empty" id="empty">아직 대화가 없습니다.<br>아래 버튼을 누르거나 메시지를 입력해 주세요.</div>
@@ -48,10 +58,25 @@
   const $quick = document.getElementById('quick');
   const $send = document.getElementById('send');
 
-  // 빠른 버튼은 서버 설정에서 가져옴 (관리 화면에서 수정 가능)
+  // 리뷰 이벤트 등 안내 카드 (채팅 맨 위에 항상 표시, 접을 수 있음)
+  function renderEvent(ev) {
+    const $ev = document.getElementById('event');
+    if (!ev) { $ev.hidden = true; return; }
+    let folded = false; try { folded = sessionStorage.getItem('eventFolded') === '1'; } catch (e) {}
+    $ev.className = 'event' + (folded ? ' folded' : '');
+    $ev.innerHTML = `<div class="head"><b></b><button type="button">${folded ? '펼치기' : '접기'}</button></div><div class="body"></div>${ev.image ? `<img src="${ev.image}" alt="">` : ''}${ev.link ? `<a class="go" href="${ev.link}" target="_blank" rel="noopener"></a>` : ''}`;
+    $ev.querySelector('.head b').textContent = ev.title || '안내';
+    $ev.querySelector('.body').textContent = ev.text || '';
+    if (ev.link) $ev.querySelector('a.go').textContent = ev.linkLabel || '자세히 보기';
+    $ev.querySelector('.head button').onclick = () => { const f = $ev.classList.toggle('folded'); $ev.querySelector('.head button').textContent = f ? '펼치기' : '접기'; try { sessionStorage.setItem('eventFolded', f ? '1' : '0'); } catch (e) {} };
+    $ev.hidden = false;
+  }
+
+  // 빠른 버튼과 안내 카드는 서버 설정에서 가져옴 (관리 화면에서 수정 가능)
   async function loadButtons() {
     try {
-      const { buttons } = await (await fetch('/api/guest-config')).json();
+      const { buttons, event } = await (await fetch('/api/guest-config')).json();
+      renderEvent(event);
       $quick.innerHTML = '';
       buttons.forEach((q) => {
         const b = document.createElement('button');

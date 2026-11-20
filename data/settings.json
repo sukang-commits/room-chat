@@ -68,6 +68,14 @@
     "바로 가겠습니다",
     "카운터로 와주세요"
   ],
+  "event": {
+    "on": false,
+    "title": "리뷰 이벤트 🎁",
+    "text": "네이버 리뷰 남기고 카운터에서 뽑기권 받아 가세요!\n리뷰 화면을 직원에게 보여 주시면 됩니다.",
+    "link": "",
+    "linkLabel": "네이버 리뷰 쓰러 가기",
+    "image": "/uploads/f63b7389494bb79b.jpg"
+  },
   "migrations": [
     "adult-pin"
   ]
