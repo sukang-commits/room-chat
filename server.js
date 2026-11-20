@@ -74,15 +74,28 @@ const DEFAULT_SETTINGS = {
     { id: 'hot', label: '더워요 🥵', on: false, reply: '', image: '', keywords: [] },
     { id: 'noise', label: '시끄러워요 🔇', on: false, reply: '', image: '', keywords: [] },
     { id: 'ott', label: 'OTT 어떻게 해요? 📺', on: false, reply: '리모컨 사용 순서를 여기에 적어 주세요.\n1. \n2. \n3. \n그래도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['ott', '넷플', '유튜브', '리모컨', '티비', 'tv', '빔프'] },
+    { id: 'adult', label: '성인인증 비밀번호가 뭐예요? 🔑', on: false, reply: '성인인증 비밀번호: (여기에 입력)\n입력해도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['성인', '인증', '성인인증', '19금'] },
     { id: 'wifi', label: '와이파이가 안돼요', on: false, reply: '와이파이 이름: (여기에 입력)\n비밀번호: (여기에 입력)\n연결이 계속 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['와이파이', 'wifi', '비밀번호', '비번', '인터넷'] },
   ],
   staffReplies: ['에어컨 온도 올려드릴게요', '에어컨 온도 낮춰드릴게요', '시끄러운 방 알려주시면 주의 드릴게요', 'OTT 어떤 게 안되실까요?', '바로 가겠습니다', '카운터로 와주세요'],
 };
 let settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-try { Object.assign(settings, JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'))); } catch (e) {}
+let hadSavedSettings = false;
+try { Object.assign(settings, JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'))); hadSavedSettings = true; } catch (e) {}
 function saveSettings() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+}
+// 나중에 추가된 기본 버튼을 기존 저장 설정에 한 번만 끼워 넣음 (사용자가 지우면 다시 생기지 않음)
+settings.migrations = Array.isArray(settings.migrations) ? settings.migrations : [];
+if (hadSavedSettings && !settings.migrations.includes('adult-pin')) {
+  if (!settings.guestButtons.some((b) => b.id === 'adult' || /성인/.test(String(b.label)))) {
+    const btn = DEFAULT_SETTINGS.guestButtons.find((b) => b.id === 'adult');
+    const after = settings.guestButtons.findIndex((b) => b.id === 'ott');
+    settings.guestButtons.splice(after >= 0 ? after + 1 : settings.guestButtons.length, 0, JSON.parse(JSON.stringify(btn)));
+  }
+  settings.migrations.push('adult-pin');
+  saveSettings();
 }
 // "1-10, 15, 22" 같은 방 범위 문자열 -> 방 id 배열 (없는 방은 무시)
 function parseRoomSpec(spec) {
@@ -101,7 +114,15 @@ function findAutoReply(text, quickId, roomId) {
   const list = settings.guestButtons || [];
   let b = quickId ? list.find((x) => x.id === quickId) : null;
   if (!b) b = list.find((x) => String(x.label).trim().toLowerCase() === t);
-  if (!b) b = list.find((x) => (x.keywords || []).some((k) => k && t.includes(String(k).toLowerCase())));
+  if (!b) {
+    let best = null, bestScore = 0, bestLen = 0;
+    for (const x of list) {
+      const hits = (x.keywords || []).filter((k) => k && t.includes(String(k).toLowerCase()));
+      const len = Math.max(0, ...hits.map((k) => String(k).length));
+      if (hits.length > bestScore || (hits.length === bestScore && hits.length && len > bestLen)) { best = x; bestScore = hits.length; bestLen = len; }
+    }
+    b = best;
+  }
   if (!b || !b.on) return null;
   const v = (b.variants || []).find((x) => (x.roomIds || []).includes(String(roomId)));
   const reply = String((v && v.reply) || b.reply || '').trim();
@@ -152,7 +173,7 @@ function applySettings(input) {
   }
   if (!out.length) throw new Error('손님 버튼이 하나 이상 필요합니다.');
   const replies = (Array.isArray(input.staffReplies) ? input.staffReplies : String(input.staffReplies || '').split('\n')).map((r) => clean(r, 60)).filter(Boolean).slice(0, 12);
-  settings = { guestButtons: out, staffReplies: replies.length ? replies : DEFAULT_SETTINGS.staffReplies };
+  settings = { ...settings, guestButtons: out, staffReplies: replies.length ? replies : DEFAULT_SETTINGS.staffReplies };
   saveSettings();
   // 더 이상 쓰지 않는 업로드 이미지 정리
   try {

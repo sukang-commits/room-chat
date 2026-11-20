@@ -30,8 +30,8 @@
     {
       "id": "ott",
       "label": "OTT 어떻게 해요? 📺",
-      "on": true,
-      "reply": "[기본] TV 리모컨: 전원 → 홈 → 넷플릭스",
+      "on": false,
+      "reply": "리모컨 사용 순서를 여기에 적어 주세요.\n1. \n2. \n3. \n그래도 안 되면 직원이 바로 가겠습니다.",
       "image": "",
       "keywords": [
         "ott",
@@ -42,29 +42,28 @@
         "tv",
         "빔프"
       ],
-      "variants": [
-        {
-          "id": "vrqvrn9",
-          "rooms": "1-5, 9",
-          "roomIds": [
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "9"
-          ],
-          "reply": "",
-          "image": "/uploads/421fee50e8e0f65c.jpg"
-        }
-      ]
+      "variants": []
+    },
+    {
+      "id": "adult",
+      "label": "성인인증 비밀번호가 뭐예요? 🔑",
+      "on": true,
+      "reply": "성인인증 비밀번호: 1234",
+      "image": "",
+      "keywords": [
+        "성인",
+        "인증",
+        "성인인증",
+        "19금"
+      ],
+      "variants": []
     },
     {
       "id": "wifi",
       "label": "와이파이가 안돼요",
       "on": true,
-      "reply": "와이파이 이름: BULTOON_5G\n비밀번호: bultoon1234\n연결이 계속 안 되면 직원이 바로 가겠습니다.",
-      "image": "/uploads/232fb3850473af18.jpg",
+      "reply": "와이파이: BULTOON / 비밀번호: 5678",
+      "image": "",
       "keywords": [
         "와이파이",
         "wifi",
@@ -76,7 +75,12 @@
     }
   ],
   "staffReplies": [
+    "에어컨 온도 올려드릴게요",
+    "에어컨 온도 낮춰드릴게요",
+    "시끄러운 방 알려주시면 주의 드릴게요",
+    "OTT 어떤 게 안되실까요?",
     "바로 가겠습니다",
     "카운터로 와주세요"
-  ]
+  ],
+  "migrations": []
 }
