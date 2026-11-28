@@ -313,7 +313,7 @@
   }
   async function join() {
     if (!password) await loadConfig();
-    socket.emit('staff:join', { store: STORE.id, password }, (res) => {
+    socket.emit('staff:join', { store: STORE.key || STORE.id, password }, (res) => {
       if (res.error) { alert(res.error); return; }
       rooms = res.rooms; messages = res.messages || {};
       renderRooms(); if (current) renderChat();

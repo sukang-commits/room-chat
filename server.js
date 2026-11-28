@@ -13,7 +13,8 @@ const crypto = require('crypto');
 // ---------- 설정 (환경변수로 변경 가능) ----------
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1234';          // 기본 매장 직원 비밀번호
-const MASTER_PASSWORD = process.env.MASTER_PASSWORD || ADMIN_PASSWORD; // 본사 비밀번호: 모든 매장 화면 + /hq 에 쓸 수 있음
+// 본사 비밀번호: /hq 와 모든 매장 화면에 통함. 매장 비밀번호와 같으면 매장 직원이 본사에 들어올 수 있으므로 반드시 다른 값으로 따로 설정
+const MASTER_PASSWORD = (process.env.MASTER_PASSWORD && process.env.MASTER_PASSWORD !== process.env.ADMIN_PASSWORD) ? process.env.MASTER_PASSWORD : '';
 const ROOM_COUNT = parseInt(process.env.ROOM_COUNT || '40', 10);      // 기본 매장 방 개수 (1번방 ~ N번방)
 const ROOM_NAMES = process.env.ROOM_NAMES                              // 기본 매장 방 이름 직접 지정 시: "101호,102호,201호"
   ? process.env.ROOM_NAMES.split(',').map((s) => s.trim()).filter(Boolean)
@@ -54,10 +55,11 @@ function createStore(id, cfg) {
   const dir = isMain ? DATA_DIR : path.join(DATA_DIR, 'stores', id);     // 기본 매장은 예전 그대로 data/ 바로 아래
   const uploadDir = path.join(dir, 'uploads');
   const uploadUrl = isMain ? '/uploads/' : `/uploads/${id}/`;
-  const urlBase = isMain ? '' : `/s/${id}`;                                // 페이지·API 주소 앞에 붙는 부분
+  const key = isMain ? 'main' : cfg.key;                                   // 주소에 들어가는 무작위 코드 (매장 아이디는 주소에 안 씀)
+  const urlBase = isMain ? '' : `/s/${key}`;                               // 페이지·API 주소 앞에 붙는 부분
   fs.mkdirSync(dir, { recursive: true });
 
-  const S = { id, isMain, dir, uploadDir, uploadUrl, urlBase, name: cfg.name || (isMain ? '벌툰' : id), password: cfg.password || '' };
+  const S = { id, key, isMain, dir, uploadDir, uploadUrl, urlBase, name: cfg.name || (isMain ? '벌툰' : id), password: cfg.password || '' };
   S.rooms = makeRooms(cfg.roomCount, cfg.roomNames);
   S.roomById = Object.fromEntries(S.rooms.map((r) => [r.id, r]));
 
@@ -289,7 +291,7 @@ function createStore(id, cfg) {
     const today = new Date(Date.now() + KST_OFFSET).toISOString().slice(0, 10);
     const todayCount = S.statsLog.filter((r) => r.from === 'guest' && new Date(r.at + KST_OFFSET).toISOString().slice(0, 10) === today).length;
     const unread = S.allSummaries().reduce((n, r) => n + r.unread, 0);
-    return { id, name: S.name, isMain, roomCount: S.rooms.length, roomNames: S.rooms.map((r) => r.name), urlBase, todayCount, unread, total: S.statsLog.filter((r) => r.from === 'guest').length };
+    return { id, key, name: S.name, isMain, roomCount: S.rooms.length, roomNames: S.rooms.map((r) => r.name), urlBase, todayCount, unread, total: S.statsLog.filter((r) => r.from === 'guest').length };
   };
   return S;
 }
@@ -305,13 +307,20 @@ function kstDayStart(ymd) {               // 'YYYY-MM-DD'(한국 날짜) -> 그�
 let registry = {};
 try { registry = JSON.parse(fs.readFileSync(STORES_FILE, 'utf8')); } catch (e) {}
 function saveRegistry() { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(STORES_FILE, JSON.stringify(registry, null, 2)); }
-const stores = {};
+const newKey = () => crypto.randomBytes(8).toString('base64url').replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 10).padEnd(10, 'x');
+const stores = {};        // 매장 아이디 -> 매장
+const storesByKey = {};   // 주소 코드 -> 매장
 stores.main = createStore('main', { name: (registry.main && registry.main.name) || process.env.STORE_NAME || '벌툰', password: ADMIN_PASSWORD, roomCount: ROOM_COUNT, roomNames: ROOM_NAMES });
+let registryChanged = false;
 for (const [id, cfg] of Object.entries(registry)) {
   if (id === 'main' || !STORE_ID_RE.test(id) || RESERVED_IDS.has(id)) continue;
-  try { stores[id] = createStore(id, cfg); } catch (e) { console.error(`[${id}] 매장을 불러오지 못했습니다.`, e.message); }
+  if (!cfg.key || !/^[a-z0-9]{10}$/.test(cfg.key)) { cfg.key = newKey(); registryChanged = true; }
+  try { stores[id] = createStore(id, cfg); storesByKey[cfg.key] = stores[id]; } catch (e) { console.error(`[${id}] 매장을 불러오지 못했습니다.`, e.message); }
 }
-function getStore(id) { return stores[id || 'main'] || null; }
+if (registryChanged) saveRegistry();
+// 주소에 쓰는 값으로 매장 찾기: 'main' 또는 무작위 코드. 매장 아이디로는 못 찾음
+function getStore(key) { if (!key || key === 'main') return stores.main; return storesByKey[key] || null; }
+const storeById = (id) => stores[id] || null;   // 소켓 연결 뒤에는 매장 아이디로 찾음
 
 // ---------- 웹 서버 ----------
 const app = express();
@@ -334,6 +343,18 @@ function baseUrl(req) {
   const host = req.headers['x-forwarded-host'] || req.get('host');
   return `${proto}://${host}`;
 }
+// 비밀번호 틀리기 제한: 같은 IP 에서 10번 틀리면 10분 차단 (무작위 대입 방지)
+const authFails = new Map();
+const clientIp = (req) => String((req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '');
+function isBlocked(ip) { const f = authFails.get(ip); return !!(f && f.until > Date.now()); }
+function noteFail(ip) {
+  const f = authFails.get(ip) || { count: 0, until: 0 };
+  f.count += 1;
+  if (f.count >= 10) { f.until = Date.now() + 10 * 60000; f.count = 0; }
+  authFails.set(ip, f);
+  if (authFails.size > 5000) authFails.clear();
+}
+function noteOk(ip) { authFails.delete(ip); }
 function basicPassword(req) {
   const [scheme, encoded] = String(req.headers.authorization || '').split(' ');
   if (scheme !== 'Basic' || !encoded) return null;
@@ -341,15 +362,23 @@ function basicPassword(req) {
   return idx < 0 ? '' : Buffer.from(encoded, 'base64').toString().slice(idx + 1);
 }
 // 직원 화면 보호: 그 매장 비밀번호 또는 본사 비밀번호. 매장마다 realm 이 달라 브라우저가 매장별로 따로 기억
+const isMaster = (pw) => !!MASTER_PASSWORD && pw === MASTER_PASSWORD;
 function adminAuth(req, res, next) {
+  const ip = clientIp(req);
+  if (isBlocked(ip)) return res.status(429).send('<meta charset="utf-8">비밀번호를 너무 많이 틀렸습니다. 10분 뒤에 다시 시도하세요.');
   const pw = basicPassword(req);
-  if (pw !== null && (pw === req.store.password || pw === MASTER_PASSWORD)) return next();
-  res.set('WWW-Authenticate', `Basic realm="bultoon-${req.store.id}"`);
+  if (pw !== null && (pw === req.store.password || isMaster(pw))) { noteOk(ip); return next(); }
+  if (pw !== null) noteFail(ip);
+  res.set('WWW-Authenticate', `Basic realm="bultoon-${req.store.key}"`);
   res.status(401).send(`<meta charset="utf-8">${req.store.name} 직원 전용 페이지입니다. 비밀번호를 입력하세요.`);
 }
 function hqAuth(req, res, next) {
+  if (!MASTER_PASSWORD) return res.status(503).send('<meta charset="utf-8"><body style="font-family:sans-serif;padding:40px;line-height:1.7"><h2>본사 페이지가 꺼져 있습니다</h2>서버 환경변수 <b>MASTER_PASSWORD</b> 를 매장 비밀번호(ADMIN_PASSWORD)와 <b>다른 값</b>으로 설정하면 켜집니다.<br>Render 대시보드 → Environment → Add Environment Variable</body>');
+  const ip = clientIp(req);
+  if (isBlocked(ip)) return res.status(429).send('<meta charset="utf-8">비밀번호를 너무 많이 틀렸습니다. 10분 뒤에 다시 시도하세요.');
   const pw = basicPassword(req);
-  if (pw !== null && pw === MASTER_PASSWORD) return next();
+  if (pw !== null && isMaster(pw)) { noteOk(ip); return next(); }
+  if (pw !== null) noteFail(ip);
   res.set('WWW-Authenticate', 'Basic realm="bultoon-hq"');
   res.status(401).send('<meta charset="utf-8">본사 전용 페이지입니다. 본사 비밀번호를 입력하세요.');
 }
@@ -363,7 +392,7 @@ const FROM_LABEL = { guest: '손님', staff: '직원', auto: '자동 답변', sy
 const storeRouter = express.Router({ mergeParams: true });
 storeRouter.use((req, res, next) => {
   const st = getStore(req.params.store);
-  if (!st) return res.status(404).send('<meta charset="utf-8">없는 매장입니다.');
+  if (!st) return res.status(404).send('<meta charset="utf-8"><body style="font-family:sans-serif;text-align:center;padding:60px 20px"><h2>없는 주소입니다</h2></body>');
   req.store = st;
   next();
 });
@@ -392,7 +421,7 @@ storeRouter.get('/admin/log', adminAuth, (req, res) => res.sendFile(pub('log.htm
 storeRouter.get('/admin/settings', adminAuth, (req, res) => res.sendFile(pub('settings.html')));
 storeRouter.get('/admin/config', adminAuth, (req, res) => {
   const st = req.store;
-  res.json({ store: { id: st.id, name: st.name }, base: st.urlBase, password: st.password, rooms: st.rooms.map((r) => ({ ...r, slug: st.roomSlug(r.id) })), baseUrl: baseUrl(req), guestBase: `${baseUrl(req)}${st.urlBase}`, staffReplies: st.settings.staffReplies });
+  res.json({ store: { id: st.id, key: st.key, name: st.name }, base: st.urlBase, password: st.password, rooms: st.rooms.map((r) => ({ ...r, slug: st.roomSlug(r.id) })), baseUrl: baseUrl(req), guestBase: `${baseUrl(req)}${st.urlBase}`, staffReplies: st.settings.staffReplies });
 });
 // 기록 전체 삭제 (대화 + 통계). 통계 페이지의 버튼에서 호출
 storeRouter.post('/admin/reset', adminAuth, (req, res) => {
@@ -476,17 +505,27 @@ app.post('/hq/stores', hqAuth, (req, res) => {
   const existing = stores[id];
   if (!existing && password.length < 4) return res.status(400).json({ error: '비밀번호는 4자 이상이어야 합니다.' });
   if (!existing && !roomNames && !roomCount) return res.status(400).json({ error: '방 개수를 입력하세요.' });
-  const cfg = { name, password: password || (existing ? existing.password : ''), roomCount: roomNames ? undefined : (roomCount || (existing ? existing.rooms.length : 1)), roomNames: roomNames || (existing && !roomCount ? (registry[id] || {}).roomNames : null) || null };
+  const cfg = { key: existing ? existing.key : newKey(), name, password: password || (existing ? existing.password : ''), roomCount: roomNames ? undefined : (roomCount || (existing ? existing.rooms.length : 1)), roomNames: roomNames || (existing && !roomCount ? (registry[id] || {}).roomNames : null) || null };
   registry[id] = cfg;
   saveRegistry();
   stores[id] = createStore(id, cfg);   // 방 목록·비밀번호가 바뀌면 다시 읽음 (대화·설정 파일은 그대로)
+  storesByKey[cfg.key] = stores[id];
   res.json({ ok: true, store: stores[id].summary(), created: !existing });
+});
+// 주소 코드 새로 만들기 (주소가 새어 나갔을 때). 그 매장의 QR·포스 설정은 다시 해야 함
+app.post('/hq/stores/:id/newkey', hqAuth, (req, res) => {
+  const id = req.params.id;
+  if (id === 'main' || !stores[id]) return res.status(400).json({ error: '없는 매장입니다.' });
+  delete storesByKey[stores[id].key];
+  registry[id].key = newKey(); saveRegistry();
+  stores[id] = createStore(id, registry[id]); storesByKey[registry[id].key] = stores[id];
+  res.json({ ok: true, store: stores[id].summary() });
 });
 app.delete('/hq/stores/:id', hqAuth, (req, res) => {
   const id = req.params.id;
   if (id === 'main' || !stores[id]) return res.status(400).json({ error: '지울 수 없는 매장입니다.' });
   delete registry[id]; saveRegistry();
-  const st = stores[id]; delete stores[id];
+  const st = stores[id]; delete stores[id]; delete storesByKey[st.key];
   try { fs.renameSync(st.dir, `${st.dir}.deleted-${Date.now()}`); } catch (e) {}   // 데이터는 지우지 않고 이름만 바꿔 보관
   res.json({ ok: true });
 });
@@ -508,7 +547,7 @@ io.on('connection', (socket) => {
 
   // 손님 메시지
   socket.on('guest:message', ({ text, quick }, cb) => {
-    const st = getStore(socket.data.store);
+    const st = storeById(socket.data.store);
     const room = socket.data.room;
     if (socket.data.role !== 'guest' || !st || !room) return;
     text = String(text || '').trim().slice(0, 500);
@@ -530,7 +569,10 @@ io.on('connection', (socket) => {
   // 직원 입장: { store, password }
   socket.on('staff:join', ({ store: sid, password }, cb) => {
     const st = getStore(sid);
-    if (!st || (password !== st.password && password !== MASTER_PASSWORD)) return cb && cb({ error: '비밀번호가 틀렸습니다.' });
+    const ip = String((socket.handshake.headers['x-forwarded-for'] || '').split(',')[0].trim() || socket.handshake.address || '');
+    if (isBlocked(ip)) return cb && cb({ error: '비밀번호를 너무 많이 틀렸습니다. 10분 뒤에 다시 시도하세요.' });
+    if (!st || (password !== st.password && !isMaster(password))) { noteFail(ip); return cb && cb({ error: '비밀번호가 틀렸습니다.' }); }
+    noteOk(ip);
     socket.data.role = 'staff'; socket.data.store = st.id;
     socket.join(`staff:${st.id}`);
     cb && cb({ store: { id: st.id, name: st.name }, rooms: st.allSummaries(), messages: st.data.messages });
@@ -538,7 +580,7 @@ io.on('connection', (socket) => {
 
   // 직원 답장
   socket.on('staff:message', ({ room, text }, cb) => {
-    const st = getStore(socket.data.store);
+    const st = storeById(socket.data.store);
     if (socket.data.role !== 'staff' || !st || !st.roomById[room]) return;
     text = String(text || '').trim().slice(0, 500);
     if (!text) return;
@@ -551,7 +593,7 @@ io.on('connection', (socket) => {
 
   // 직원이 방을 열어봄 -> 읽음 처리
   socket.on('staff:read', ({ room }) => {
-    const st = getStore(socket.data.store);
+    const st = storeById(socket.data.store);
     if (socket.data.role !== 'staff' || !st || !st.roomById[room]) return;
     st.data.lastRead[room] = Date.now();
     st.save();
@@ -560,7 +602,7 @@ io.on('connection', (socket) => {
 
   // 직원이 방 대화 비우기 (퇴실 처리)
   socket.on('staff:clear', ({ room }) => {
-    const st = getStore(socket.data.store);
+    const st = storeById(socket.data.store);
     if (socket.data.role !== 'staff' || !st || !st.roomById[room]) return;
     if (st.history(room).length) st.logStat({ room, from: 'system', text: '퇴실 처리 (대화 비우기)', at: Date.now() });
     st.data.messages[room] = [];
@@ -575,6 +617,6 @@ io.on('connection', (socket) => {
 server.listen(PORT, () => {
   console.log(`방 채팅 서버 실행 중: http://localhost:${PORT}`);
   console.log(`직원 화면: http://localhost:${PORT}/admin  (비밀번호: ${ADMIN_PASSWORD})`);
-  console.log(`본사 화면: http://localhost:${PORT}/hq`);
+  console.log(`본사 화면: http://localhost:${PORT}/hq ${MASTER_PASSWORD ? '' : '(꺼짐: MASTER_PASSWORD 를 ADMIN_PASSWORD 와 다른 값으로 설정하세요)'}`);
   console.log(`매장: ${Object.values(stores).map((s) => `${s.name}(${s.id}, 방 ${s.rooms.length}개)`).join(', ')}`);
 });

@@ -41,7 +41,7 @@
 </header>
 <main class="page">
   <div class="toolbar"><h1>매장 관리</h1></div>
-  <p class="help">매장마다 대화·통계·설정·사진·QR 비밀코드·비밀번호가 따로 저장됩니다. 매장 직원은 자기 매장 주소와 비밀번호로만 들어갈 수 있고, 본사 비밀번호로는 모든 매장에 들어갈 수 있습니다. 기능은 고치면 모든 매장에 한 번에 적용됩니다.</p>
+  <p class="help">매장마다 대화·통계·설정·사진·QR 비밀코드·비밀번호가 따로 저장됩니다. 매장 주소에는 추측할 수 없는 무작위 코드가 들어가서, 주소와 비밀번호를 둘 다 아는 사람만 들어갈 수 있습니다. 매장 직원은 자기 매장만, 본사 비밀번호로는 모든 매장에 들어갈 수 있습니다. 기능은 고치면 모든 매장에 한 번에 적용됩니다.</p>
   <div class="stores" id="stores"></div>
 
   <h2 style="font-size:18px;margin:0 0 8px">매장 추가</h2>
@@ -74,10 +74,10 @@
           <a href="${esc(s.urlBase)}/admin/stats" target="_blank">통계</a>
           <a href="${esc(s.urlBase)}/admin/log" target="_blank">대화 기록</a>
         </div>
-        <div class="login">직원 주소 <code>${esc(d.baseUrl + s.urlBase)}/admin</code><br>직원 비밀번호 <code>${esc(s.password)}</code>${s.isMain ? '<br><span class="muted">기본 매장의 비밀번호·방 개수는 Render 환경변수(ADMIN_PASSWORD, ROOM_COUNT)에서 바꿉니다.</span>' : ''}</div>
+        <div class="login">직원 주소 <code>${esc(d.baseUrl + s.urlBase)}/admin</code><br>직원 비밀번호 <code>${esc(s.password)}</code>${s.isMain ? '<br><span class="muted">기본 매장의 비밀번호·방 개수는 Render 환경변수(ADMIN_PASSWORD, ROOM_COUNT)에서 바꿉니다.</span>' : '<br><span class="muted">포스 프로그램 서버 주소에는 /admin 을 뺀 앞부분을 넣습니다. 주소는 그 매장 점장에게만 전달하세요.</span>'}</div>
         <div class="edit">
           <button type="button" class="btn btn-sm" data-act="rename">이름 바꾸기</button>
-          ${s.isMain ? '' : `<button type="button" class="btn btn-sm" data-act="pw">비밀번호 바꾸기</button><button type="button" class="btn btn-sm" data-act="rooms">방 개수 바꾸기</button><button type="button" class="btn btn-sm" data-act="del" style="color:#b91c1c">매장 삭제</button>`}
+          ${s.isMain ? '' : `<button type="button" class="btn btn-sm" data-act="pw">비밀번호 바꾸기</button><button type="button" class="btn btn-sm" data-act="rooms">방 개수 바꾸기</button><button type="button" class="btn btn-sm" data-act="newkey">주소 새로 만들기</button><button type="button" class="btn btn-sm" data-act="del" style="color:#b91c1c">매장 삭제</button>`}
         </div>
       </div>`).join('');
     document.querySelectorAll('.store-card [data-act]').forEach((b) => {
@@ -88,6 +88,8 @@
         if (act === 'rename') { const name = prompt('새 매장 이름', st.name); if (!name) return; body = { id, name }; }
         if (act === 'pw') { const password = prompt('새 직원 비밀번호 (4자 이상)'); if (!password) return; body = { id, name: st.name, password }; }
         if (act === 'rooms') { const n = prompt('방 개수 (기존 대화·설정은 유지됩니다)', st.roomCount); if (!n) return; body = { id, name: st.name, roomCount: +n }; }
+        if (act === 'newkey') { if (!confirm(`"${st.name}" 매장의 주소를 새로 만들까요?\n지금 주소와 인쇄한 QR, 포스 프로그램 설정이 모두 무효가 됩니다. 주소가 새어 나갔을 때만 쓰세요.`)) return;
+          const r = await fetch('/hq/stores/' + id + '/newkey', { method: 'POST' }); if (!r.ok) alert((await r.json()).error || '실패'); return load(); }
         if (act === 'del') { if (!confirm(`"${st.name}" 매장을 삭제할까요? 직원 화면과 QR이 모두 막힙니다. (데이터 파일은 서버에 보관됩니다)`) || prompt('확인을 위해 "삭제"라고 입력하세요') !== '삭제') return;
           const r = await fetch('/hq/stores/' + id, { method: 'DELETE' }); if (!r.ok) alert((await r.json()).error || '실패'); return load(); }
         const r = await fetch('/hq/stores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
