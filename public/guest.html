@@ -83,7 +83,8 @@
   function renderEvent(ev) {
     const $ev = document.getElementById('event');
     if (!ev) { $ev.hidden = true; return; }
-    let folded = false; try { folded = sessionStorage.getItem('eventFolded') === '1'; } catch (e) {}
+    let folded = !!ev.folded;   // 설정에서 '처음엔 접힌 상태'면 제목만 보임. 손님이 펼치면 이 접속 동안 기억
+    try { const saved = sessionStorage.getItem('eventFolded'); if (saved !== null) folded = saved === '1'; } catch (e) {}
     $ev.className = 'event' + (folded ? ' folded' : '');
     $ev.innerHTML = `<div class="head"><b></b><button type="button">${folded ? '펼치기' : '접기'}</button></div><div class="body"></div>${ev.image ? `<img src="${ev.image}" alt="">` : ''}${ev.link ? `<a class="go" href="${ev.link}" target="_blank" rel="noopener"></a>` : ''}`;
     $ev.querySelector('.head b').textContent = ev.title || '안내';

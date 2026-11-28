@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS = {
   ],
   staffReplies: ['에어컨 온도 올려드릴게요', '에어컨 온도 낮춰드릴게요', '시끄러운 방 알려주시면 주의 드릴게요', 'OTT 어떤 게 안되실까요?', '바로 가겠습니다', '카운터로 와주세요'],
   // 손님 채팅 맨 위에 항상 보이는 안내 카드 (리뷰 이벤트 등)
-  event: { on: false, title: '리뷰 이벤트 🎁', text: '네이버 리뷰 남기고 카운터에서 뽑기권 받아 가세요!', link: '', linkLabel: '네이버 리뷰 쓰러 가기', image: '' },
+  event: { on: false, folded: true, title: '🍧 구슬아이스크림 공짜!', text: '네이버 리뷰 작성하고 카운터로 오시면 드립니다.', link: '', linkLabel: '네이버 리뷰 쓰러 가기', image: '' },
   // 카카오톡 채널 안내 (불만·건의는 점장에게) + 장난 주의 문구
   kakao: { on: false, compact: false, title: '직접 말씀하기 어려운 불만이 있다면', text: '카카오톡으로 남겨 주시면 점장이 직접 확인하고 연락드립니다. 매장에서 바로 말하기 어려운 내용도 괜찮습니다.', linkLabel: '불만·건의 남기기 (카카오톡)', link: '' },
   warning: { on: false, text: '허위·장난 요청은 업무방해로 신고될 수 있습니다. 모든 메시지는 접속 기록과 함께 보관됩니다.' },
@@ -218,7 +218,7 @@ function createStore(id, cfg) {
     const ev = input.event && typeof input.event === 'object' ? input.event : {};
     let link = clean(ev.link, 300);
     if (!/^https?:\/\/[^\s]+$/i.test(link)) link = '';
-    const event = { on: !!ev.on, title: clean(ev.title, 40), text: clean(ev.text, 500), link, linkLabel: clean(ev.linkLabel, 30) || '자세히 보기', image: resolveImage(ev) };
+    const event = { on: !!ev.on, folded: !!ev.folded, title: clean(ev.title, 40), text: clean(ev.text, 500), link, linkLabel: clean(ev.linkLabel, 30) || '자세히 보기', image: resolveImage(ev) };
     const kk = input.kakao && typeof input.kakao === 'object' ? input.kakao : {};
     let klink = clean(kk.link, 300);
     if (!/^https?:\/\/[^\s]+$/i.test(klink)) klink = '';

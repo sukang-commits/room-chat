@@ -48,6 +48,11 @@
   .evp .body { margin-top: 6px; font-size: 14px; line-height: 1.5; white-space: pre-line; color: #3f3f46; }
   .evp img { display: block; width: 100%; border-radius: 10px; margin-top: 8px; }
   .evp .go { display: block; margin-top: 10px; background: #e11d48; color: #fff; text-align: center; font-weight: 700; padding: 10px; border-radius: 12px; font-size: 14px; }
+  .kkp { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; max-width: 340px; box-shadow: var(--shadow); }
+  .kkp b { display: block; font-size: 15px; }
+  .kkp .body { margin-top: 4px; font-size: 14px; line-height: 1.5; color: #3f3f46; }
+  .kkp .go { display: block; margin-top: 10px; background: #FEE500; color: #191919; text-align: center; font-weight: 800; padding: 10px; border-radius: 12px; font-size: 14px; }
+  .kkp.compact { display: flex; align-items: center; gap: 10px; } .kkp.compact b { flex: 1; } .kkp.compact .body { display: none; } .kkp.compact .go { margin: 0; white-space: nowrap; }
   .add { border: 2px dashed var(--line); background: transparent; border-radius: var(--radius); padding: 14px; width: 100%; font-size: 15px; font-weight: 600; color: var(--muted); min-height: 48px; }
   .add:hover { border-color: var(--accent); color: var(--accent); }
   .save { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.96); backdrop-filter: blur(6px); border-top: 1px solid var(--line); padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 12px; align-items: center; justify-content: center; }
@@ -78,6 +83,7 @@
 <div class="card" id="eventCard">
   <div class="row">
     <label class="toggle"><input type="checkbox" id="evOn"> 안내 카드 켜기</label>
+    <label class="toggle"><input type="checkbox" id="evFolded"> 처음엔 접힌 상태로 (제목 한 줄만 보임, 손님이 펼치면 내용 표시)</label>
   </div>
   <div class="row"><label class="k">제목</label><input type="text" id="evTitle" maxlength="40" placeholder="리뷰 이벤트 🎁"></div>
   <div class="row"><label class="k">내용</label><textarea id="evText" placeholder="네이버 리뷰 남기고 카운터에서 뽑기권 받아 가세요!"></textarea></div>
@@ -87,6 +93,27 @@
     <div class="img" id="evImg"></div>
   </div>
   <div class="row"><label class="k">손님 화면 미리보기</label><div id="evPreview"></div></div>
+</div>
+
+<h2>카카오톡 채널 안내 (불만·건의는 점장에게)</h2>
+<p class="help">손님 채팅 위에 흰 카드로 보입니다. 버튼을 누르면 매장 카카오톡 채널 채팅이 열려서, 근무자가 아니라 점장이 직접 받을 수 있습니다. 채널 채팅 주소는 카카오톡 채널 관리자센터에서 복사합니다. (예: http://pf.kakao.com/_abcdef/chat)</p>
+<div class="card" id="kakaoCard">
+  <div class="row">
+    <label class="toggle"><input type="checkbox" id="kkOn"> 카카오톡 안내 켜기</label>
+    <label class="toggle"><input type="checkbox" id="kkCompact"> 한 줄형으로 작게 (제목 + 버튼만)</label>
+  </div>
+  <div class="row"><label class="k">제목</label><input type="text" id="kkTitle" maxlength="40"></div>
+  <div class="row"><label class="k">내용 (한 줄형에서는 안 보임)</label><textarea id="kkText" style="min-height:70px"></textarea></div>
+  <div class="row"><label class="k">버튼 문구</label><input type="text" id="kkLabel" maxlength="30"></div>
+  <div class="row"><label class="k">카카오톡 채널 채팅 주소 (http:// 또는 https:// 로 시작)</label><input type="text" id="kkLink" maxlength="300" placeholder="http://pf.kakao.com/_abcdef/chat"></div>
+  <div class="row"><label class="k">손님 화면 미리보기</label><div id="kkPreview"></div></div>
+</div>
+
+<h2>장난 주의 문구</h2>
+<p class="help">손님 입력창 바로 위에 작은 회색 글씨로 항상 보입니다. 허위·장난 요청을 줄이고, 문제가 생겼을 때 신고 근거가 됩니다.</p>
+<div class="card" id="warnCard">
+  <div class="row"><label class="toggle"><input type="checkbox" id="wnOn"> 주의 문구 켜기</label></div>
+  <div class="row"><label class="k">문구</label><textarea id="wnText" style="min-height:60px"></textarea></div>
 </div>
 
 <h2>직원 빠른 답장</h2>
@@ -240,7 +267,7 @@
   // ----- 이벤트 안내 카드 -----
   function renderEvent() {
     const ev = data.event = data.event || { on: false, title: '', text: '', link: '', linkLabel: '', image: '' };
-    $('evOn').checked = !!ev.on; $('evTitle').value = ev.title || ''; $('evText').value = ev.text || ''; $('evLink').value = ev.link || ''; $('evLinkLabel').value = ev.linkLabel || '';
+    $('evOn').checked = !!ev.on; $('evFolded').checked = !!ev.folded; $('evTitle').value = ev.title || ''; $('evText').value = ev.text || ''; $('evLink').value = ev.link || ''; $('evLinkLabel').value = ev.linkLabel || '';
     const src = ev.imageData || ev.image || '';
     $('evImg').innerHTML = `${src ? `<img src="${esc(src)}" alt="">` : '<div class="none">사진 없음</div>'}<label class="file">사진 선택<input type="file" accept="image/*" id="evFile"></label>${src ? '<button type="button" id="evImgDel" style="border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;font-size:13px;color:#b91c1c">사진 삭제</button>' : ''}`;
     $('evFile').onchange = (e) => { const f = e.target.files[0]; if (f) shrink(f).then((d) => { ev.imageData = d; renderEvent(); }); };
@@ -252,23 +279,40 @@
     const okLink = /^https?:\/\/\S+$/i.test(ev.link || '');
     $('evPreview').innerHTML = ev.on ? `<div class="evp"><b>${esc(ev.title || '안내')}</b><div class="body">${esc(ev.text || '')}</div>${src ? `<img src="${esc(src)}" alt="">` : ''}${okLink ? `<div class="go">${esc(ev.linkLabel || '자세히 보기')}</div>` : (ev.link ? '<div style="color:#b91c1c;font-size:12px;margin-top:6px">링크는 http:// 또는 https:// 로 시작해야 합니다</div>' : '')}</div>` : '<div style="color:var(--muted);font-size:13px">꺼져 있음 (손님에게 안 보임)</div>';
   }
-  [['evOn', 'on'], ['evTitle', 'title'], ['evText', 'text'], ['evLink', 'link'], ['evLinkLabel', 'linkLabel']].forEach(([id, k]) => {
-    $(id).oninput = $(id).onchange = () => { data.event[k] = k === 'on' ? $(id).checked : $(id).value; renderEventPreview(); };
+  [['evOn', 'on'], ['evFolded', 'folded'], ['evTitle', 'title'], ['evText', 'text'], ['evLink', 'link'], ['evLinkLabel', 'linkLabel']].forEach(([id, k]) => {
+    $(id).oninput = $(id).onchange = () => { data.event[k] = (k === 'on' || k === 'folded') ? $(id).checked : $(id).value; renderEventPreview(); };
   });
+
+  // ----- 카카오톡 안내 / 장난 주의 문구 -----
+  function renderKakao() {
+    const k = data.kakao = data.kakao || { on: false, compact: false, title: '', text: '', linkLabel: '', link: '' };
+    $('kkOn').checked = !!k.on; $('kkCompact').checked = !!k.compact; $('kkTitle').value = k.title || ''; $('kkText').value = k.text || ''; $('kkLabel').value = k.linkLabel || ''; $('kkLink').value = k.link || '';
+    renderKakaoPreview();
+    const w = data.warning = data.warning || { on: false, text: '' };
+    $('wnOn').checked = !!w.on; $('wnText').value = w.text || '';
+  }
+  function renderKakaoPreview() {
+    const k = data.kakao; const okLink = /^https?:\/\/\S+$/i.test(k.link || '');
+    $('kkPreview').innerHTML = k.on ? `<div class="kkp${k.compact ? ' compact' : ''}"><b>${esc(k.title || '불만·건의')}</b><div class="body">${esc(k.text || '')}</div>${okLink ? `<div class="go">💬 ${esc(k.linkLabel || '카카오톡으로 연락하기')}</div>` : '<div style="color:#b91c1c;font-size:12px;margin-top:6px">채널 주소를 넣어야 버튼이 생깁니다</div>'}</div>` : '<div style="color:var(--muted);font-size:13px">꺼져 있음 (손님에게 안 보임)</div>';
+  }
+  [['kkOn', 'on'], ['kkCompact', 'compact'], ['kkTitle', 'title'], ['kkText', 'text'], ['kkLabel', 'linkLabel'], ['kkLink', 'link']].forEach(([id, k]) => {
+    $(id).oninput = $(id).onchange = () => { data.kakao[k] = (k === 'on' || k === 'compact') ? $(id).checked : $(id).value; renderKakaoPreview(); };
+  });
+  [['wnOn', 'on'], ['wnText', 'text']].forEach(([id, k]) => { $(id).oninput = $(id).onchange = () => { data.warning[k] = k === 'on' ? $(id).checked : $(id).value; }; });
 
   $('addBtn').onclick = () => { data.guestButtons.push({ id: 'b' + Math.random().toString(36).slice(2, 8), label: '', on: false, reply: '', image: '', keywords: [] }); render(); window.scrollTo(0, document.body.scrollHeight); };
 
   $('saveBtn').onclick = async () => {
     const msg = $('saveMsg'); msg.className = 'msg'; msg.textContent = '저장 중…';
-    const payload = { guestButtons: data.guestButtons, staffReplies: $('staffReplies').value.split('\n'), event: data.event };
+    const payload = { guestButtons: data.guestButtons, staffReplies: $('staffReplies').value.split('\n'), event: data.event, kakao: data.kakao, warning: data.warning };
     const r = await fetch(BASE + '/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await r.json();
     if (!r.ok) { msg.className = 'msg err'; msg.textContent = j.error || '저장 실패'; return; }
-    data = j; $('staffReplies').value = data.staffReplies.join('\n'); render(); renderEvent();
+    data = j; $('staffReplies').value = data.staffReplies.join('\n'); render(); renderEvent(); renderKakao();
     msg.className = 'msg ok'; msg.textContent = '저장됐습니다. 손님·직원 화면에 바로 적용됩니다.';
   };
 
-  fetch(BASE + '/admin/settings.json').then((r) => r.json()).then((j) => { data = j; showStoreName(j.store); $('staffReplies').value = data.staffReplies.join('\n'); render(); renderEvent(); });
+  fetch(BASE + '/admin/settings.json').then((r) => r.json()).then((j) => { data = j; showStoreName(j.store); $('staffReplies').value = data.staffReplies.join('\n'); render(); renderEvent(); renderKakao(); });
 </script>
 </body>
 </html>
