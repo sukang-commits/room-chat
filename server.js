@@ -222,7 +222,7 @@ function createStore(id, cfg) {
     const kk = input.kakao && typeof input.kakao === 'object' ? input.kakao : {};
     let klink = clean(kk.link, 300);
     if (!/^https?:\/\/[^\s]+$/i.test(klink)) klink = '';
-    const kakao = { on: !!kk.on, compact: !!kk.compact, title: clean(kk.title, 40), text: clean(kk.text, 300), linkLabel: clean(kk.linkLabel, 30) || '카카오톡으로 연락하기', link: klink };
+    const kakao = { on: !!kk.on, compact: false, title: clean(kk.title, 40), text: clean(kk.text, 300), linkLabel: clean(kk.linkLabel, 30) || '카카오톡으로 연락하기', link: klink };
     const wn = input.warning && typeof input.warning === 'object' ? input.warning : {};
     const warning = { on: !!wn.on, text: clean(wn.text, 200) };
     S.settings = { ...S.settings, guestButtons: out, staffReplies: replies.length ? replies : DEFAULT_SETTINGS.staffReplies, event, kakao, warning };

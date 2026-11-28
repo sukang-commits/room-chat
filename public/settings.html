@@ -100,10 +100,9 @@
 <div class="card" id="kakaoCard">
   <div class="row">
     <label class="toggle"><input type="checkbox" id="kkOn"> 카카오톡 안내 켜기</label>
-    <label class="toggle"><input type="checkbox" id="kkCompact"> 한 줄형으로 작게 (제목 + 버튼만)</label>
   </div>
   <div class="row"><label class="k">제목</label><input type="text" id="kkTitle" maxlength="40"></div>
-  <div class="row"><label class="k">내용 (한 줄형에서는 안 보임)</label><textarea id="kkText" style="min-height:70px"></textarea></div>
+  <div class="row"><label class="k">내용</label><textarea id="kkText" style="min-height:70px"></textarea></div>
   <div class="row"><label class="k">버튼 문구</label><input type="text" id="kkLabel" maxlength="30"></div>
   <div class="row"><label class="k">카카오톡 채널 채팅 주소 (http:// 또는 https:// 로 시작)</label><input type="text" id="kkLink" maxlength="300" placeholder="http://pf.kakao.com/_abcdef/chat"></div>
   <div class="row"><label class="k">손님 화면 미리보기</label><div id="kkPreview"></div></div>
@@ -286,17 +285,17 @@
   // ----- 카카오톡 안내 / 장난 주의 문구 -----
   function renderKakao() {
     const k = data.kakao = data.kakao || { on: false, compact: false, title: '', text: '', linkLabel: '', link: '' };
-    $('kkOn').checked = !!k.on; $('kkCompact').checked = !!k.compact; $('kkTitle').value = k.title || ''; $('kkText').value = k.text || ''; $('kkLabel').value = k.linkLabel || ''; $('kkLink').value = k.link || '';
+    k.compact = false; $('kkOn').checked = !!k.on; $('kkTitle').value = k.title || ''; $('kkText').value = k.text || ''; $('kkLabel').value = k.linkLabel || ''; $('kkLink').value = k.link || '';
     renderKakaoPreview();
     const w = data.warning = data.warning || { on: false, text: '' };
     $('wnOn').checked = !!w.on; $('wnText').value = w.text || '';
   }
   function renderKakaoPreview() {
     const k = data.kakao; const okLink = /^https?:\/\/\S+$/i.test(k.link || '');
-    $('kkPreview').innerHTML = k.on ? `<div class="kkp${k.compact ? ' compact' : ''}"><b>${esc(k.title || '불만·건의')}</b><div class="body">${esc(k.text || '')}</div>${okLink ? `<div class="go">💬 ${esc(k.linkLabel || '카카오톡으로 연락하기')}</div>` : '<div style="color:#b91c1c;font-size:12px;margin-top:6px">채널 주소를 넣어야 버튼이 생깁니다</div>'}</div>` : '<div style="color:var(--muted);font-size:13px">꺼져 있음 (손님에게 안 보임)</div>';
+    $('kkPreview').innerHTML = k.on ? `<div class="kkp"><b>${esc(k.title || '불만·건의')}</b><div class="body">${esc(k.text || '')}</div>${okLink ? `<div class="go">💬 ${esc(k.linkLabel || '카카오톡으로 연락하기')}</div>` : '<div style="color:#b91c1c;font-size:12px;margin-top:6px">채널 주소를 넣어야 버튼이 생깁니다</div>'}</div>` : '<div style="color:var(--muted);font-size:13px">꺼져 있음 (손님에게 안 보임)</div>';
   }
-  [['kkOn', 'on'], ['kkCompact', 'compact'], ['kkTitle', 'title'], ['kkText', 'text'], ['kkLabel', 'linkLabel'], ['kkLink', 'link']].forEach(([id, k]) => {
-    $(id).oninput = $(id).onchange = () => { data.kakao[k] = (k === 'on' || k === 'compact') ? $(id).checked : $(id).value; renderKakaoPreview(); };
+  [['kkOn', 'on'], ['kkTitle', 'title'], ['kkText', 'text'], ['kkLabel', 'linkLabel'], ['kkLink', 'link']].forEach(([id, k]) => {
+    $(id).oninput = $(id).onchange = () => { data.kakao[k] = k === 'on' ? $(id).checked : $(id).value; renderKakaoPreview(); };
   });
   [['wnOn', 'on'], ['wnText', 'text']].forEach(([id, k]) => { $(id).oninput = $(id).onchange = () => { data.warning[k] = k === 'on' ? $(id).checked : $(id).value; }; });
 
