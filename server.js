@@ -194,7 +194,7 @@ function createStore(id, cfg) {
     const reply = String((v && v.reply) || b.reply || '').trim();
     const image = (v && v.image) || b.image || '';
     if (!reply) return null;
-    return { text: reply, image };
+    return { text: reply, image, faqId: (b.kind || 'request') === 'faq' ? b.id : '' };
   };
   // 관리 화면에서 보낸 설정 검사 + 이미지(base64) 파일로 저장
   S.applySettings = (input) => {
@@ -644,12 +644,13 @@ io.on('connection', (socket) => {
     io.to(`room:${st.id}:${room}`).emit('message', msg);
     io.to(`staff:${st.id}`).emit('message', msg);
     if (auto) {
-      const am = st.addMessage(room, 'auto', auto.text, auto.image ? { image: auto.image } : {});
+      // faq: 안내 탭의 어느 질문에서 나온 답인지 (손님 화면이 그 질문을 펼쳐 보여줌)
+      const am = st.addMessage(room, 'auto', auto.text, { ...(auto.image ? { image: auto.image } : {}), ...(auto.faqId ? { faq: auto.faqId } : {}) });
       io.to(`room:${st.id}:${room}`).emit('message', am);
       io.to(`staff:${st.id}`).emit('message', am);
     }
     io.to(`staff:${st.id}`).emit('rooms', st.allSummaries());
-    cb && cb({ ok: true, auto: !!auto });
+    cb && cb({ ok: true, auto: !!auto, faq: (auto && auto.faqId) || '' });
   });
 
   // 직원 입장: { store, password }

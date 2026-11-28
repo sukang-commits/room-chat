@@ -69,6 +69,7 @@
   .kakao a.go { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; background: #FEE500; color: #191919; text-decoration: none; font-weight: 800; padding: 12px; border-radius: 12px; font-size: 15px; }
   .kakao a.go::before { content: ""; width: 20px; height: 20px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23191919' d='M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7l-1 3.6c-.1.3.3.6.6.4l4.3-2.9c.5.1.9.1 1.4.1 5.5 0 10-3.6 10-8S17.5 3 12 3z'/%3E%3C/svg%3E") center/contain no-repeat; }
   .info-empty { text-align: center; color: var(--muted); font-size: 14px; padding: 30px 0; }
+  .msg.auto .goinfo { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; border: 1px solid #f59e0b; background: #fff; color: #92400e; font-weight: 700; font-size: 12.5px; padding: 5px 10px; border-radius: 8px; min-height: 30px; }
 </style>
 </head>
 <body>
@@ -153,8 +154,10 @@
     if (ev.link) $ev.querySelector('a.go').textContent = ev.linkLabel || '자세히 보기';
     $ev.hidden = false;
   }
+  const faqEls = {};   // 질문 id -> { btn, ans }
   function renderFaq(list) {
     const $f = $('faq');
+    Object.keys(faqEls).forEach((k) => delete faqEls[k]);
     if (!list || !list.length) { $f.hidden = true; return; }
     $f.innerHTML = '<div class="head">📖 자주 묻는 질문</div>';
     list.forEach((q) => {
@@ -178,8 +181,18 @@
         send(q.label.replace(/\s*[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]️?\s*$/u, '') + ' (안내 봤는데도 안 돼요) 🛎️', '', true);
       };
       $f.appendChild(btn); $f.appendChild(ans);
+      faqEls[q.id] = { btn, ans };
     });
     $f.hidden = false;
+  }
+  // 채팅에서 키워드를 쳐서 자동 답변이 나오면 안내 탭의 그 질문을 펼쳐서 보여줌
+  function openFaq(id) {
+    const f = faqEls[id];
+    if (!f || !infoHasContent) return false;
+    showTab('info');
+    f.ans.hidden = false; f.btn.classList.add('open');
+    setTimeout(() => f.btn.scrollIntoView({ block: 'start', behavior: 'smooth' }), 30);
+    return true;
   }
   function renderKakao(k) {
     const $k = $('kakao');
@@ -235,7 +248,8 @@
     if (m.from === 'auto') {
       // 자동 안내: 노란 말풍선 + (있으면) 사진. 사진은 누르면 크게
       div.className = 'msg them auto';
-      div.innerHTML = `<span class="tag">💡 자동 안내</span><span class="text"></span>${m.image ? `<a href="${m.image}" target="_blank"><img src="${m.image}" alt="안내 사진"></a>` : ''}<span class="time">${fmt(m.at)}</span>`;
+      div.innerHTML = `<span class="tag">💡 자동 안내</span><span class="text"></span>${m.image ? `<a href="${m.image}" target="_blank"><img src="${m.image}" alt="안내 사진"></a>` : ''}${m.faq ? '<br><button type="button" class="goinfo">📖 안내 탭에서 보기</button>' : ''}<span class="time">${fmt(m.at)}</span>`;
+      if (m.faq) div.querySelector('.goinfo').onclick = () => openFaq(m.faq);
     } else {
       div.className = 'msg ' + (m.from === 'guest' ? 'me' : 'them');
       div.innerHTML = `<span class="text"></span><span class="time">${m.from === 'staff' ? '직원 · ' : ''}${fmt(m.at)}</span>`;
@@ -277,7 +291,10 @@
     text = text.trim();
     if (!text || !socket.connected) return;
     $send.disabled = true;
-    socket.emit('guest:message', { text, quick: quick || '', noAuto: !!noAuto }, () => { $send.disabled = false; });
+    socket.emit('guest:message', { text, quick: quick || '', noAuto: !!noAuto }, (res) => {
+      $send.disabled = false;
+      if (res && res.faq) openFaq(res.faq);   // 안내 탭의 질문에 해당하는 글이면 그 답으로 바로 이동
+    });
     $input.value = '';
   }
   $form.addEventListener('submit', (e) => { e.preventDefault(); send($input.value); $input.focus(); });
