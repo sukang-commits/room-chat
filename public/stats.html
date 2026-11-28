@@ -4,26 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>벌툰 채팅 통계</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <style>
-  body { padding: 20px 16px 40px; max-width: 1100px; margin: 0 auto; }
-  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
-  .bar h1 { font-size: 20px; margin: 0; flex: 1; }
-  .bar select { font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
-  .tile .k { font-size: 12px; color: var(--muted); }
-  .tile .v { font-size: 28px; font-weight: 800; margin-top: 4px; letter-spacing: -0.5px; }
+  .page { max-width: 1100px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+  .tile .k { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .tile .v { font-size: 30px; font-weight: 800; margin-top: 4px; letter-spacing: -0.5px; color: var(--brand); }
   .tile .v small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 2px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
-  .card h2 { font-size: 15px; margin: 0 0 12px; }
-  .card h2 small { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 6px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .card h2 { font-size: 16px; margin: 0 0 12px; }
+  .card h2 small { font-weight: 500; color: var(--muted); font-size: 13px; margin-left: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
   td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
   /* 단일 계열 막대 (한 가지 색, 얇게, 끝 둥글게) */
   .hbar { display: flex; align-items: center; gap: 8px; }
@@ -36,21 +33,26 @@
   .cols .c .tip { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: #111827; color: #fff; font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; z-index: 2; }
   .cols .c:hover .tip { display: block; }
   .xlab { display: flex; gap: 2px; margin-top: 4px; }
-  .xlab span { flex: 1; text-align: center; font-size: 10px; color: var(--muted); overflow: hidden; white-space: nowrap; }
-  .empty { color: var(--muted); font-size: 14px; padding: 12px 0; }
-  .note { font-size: 12px; color: var(--muted); margin-top: 20px; line-height: 1.6; }
+  .xlab span { flex: 1; text-align: center; font-size: 11px; color: var(--muted); overflow: visible; white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 15px; padding: 12px 0; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 20px; line-height: 1.6; }
 </style>
 </head>
 <body>
-<div class="bar">
-  <h1>벌툰 채팅 통계</h1>
+<header class="appbar">
+  <a class="brand" href="/admin"><span class="mark">벌</span>벌툰 채팅</a>
+  <span class="grow"></span>
+  <nav class="tabs"><a href="/admin">채팅</a><a href="/admin/log">대화 기록</a><a href="/admin/stats" class="on">통계</a><a href="/admin/settings">설정</a><a href="/admin/qr" target="_blank">QR 인쇄</a></nav>
+</header>
+<main class="page">
+<div class="toolbar">
+  <h1>통계</h1>
   <select id="days">
     <option value="7">최근 7일</option>
     <option value="30" selected>최근 30일</option>
     <option value="90">최근 90일</option>
     <option value="365">최근 1년</option>
   </select>
-  <a href="/admin">← 채팅으로</a>
 </div>
 
 <div class="tiles" id="tiles"></div>
@@ -64,11 +66,12 @@
 
 <div class="card" style="margin-top:20px;border-color:#fecaca">
   <h2>기록 초기화</h2>
-  <p style="font-size:13px;color:var(--muted);margin:0 0 10px">모든 방의 대화와 통계 기록을 삭제합니다. 테스트가 끝나고 실제 운영을 시작할 때 한 번 누르세요. 되돌릴 수 없습니다.</p>
-  <button id="resetBtn" style="background:#dc2626;color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer">대화 + 통계 기록 전체 삭제</button>
+  <p style="font-size:14px;color:var(--muted);margin:0 0 10px">모든 방의 대화와 통계 기록을 삭제합니다. 테스트가 끝나고 실제 운영을 시작할 때 한 번 누르세요. 되돌릴 수 없습니다.</p>
+  <button id="resetBtn" class="btn btn-danger">대화 + 통계 기록 전체 삭제</button>
   <span id="resetMsg" style="font-size:13px;margin-left:10px"></span>
 </div>
 <p class="note">손님 메시지 기준으로 집계합니다. "대화 비우기"를 해도 통계 기록은 남습니다. 응답 시간은 손님 메시지 뒤 같은 방에 직원이 처음 답장할 때까지의 시간이며, 2시간을 넘긴 경우는 평균에서 뺍니다.</p>
+</main>
 
 <script>
   const $ = (id) => document.getElementById(id);
@@ -96,8 +99,17 @@
       tile(`${d.days}일간 사용한 방`, t.activeRooms + '<small>/ ' + d.byRoom.length + '개</small>') +
       tile('자동 답변으로 해결', (t.auto || 0) + '<small>건</small>') + tile('평균 응답 시간', fmtWait(t.avgWait)) + tile('응답 시간 중간값', fmtWait(t.medWait)) + tile('답장 없는 요청', t.unanswered);
     $('dayRange').textContent = `최근 ${d.days}일`;
-    const dayItems = d.byDay.map((x) => ({ ...x, label: x.day.slice(5).replace('-', '/') }));
-    $('byDay').innerHTML = cols(dayItems, d.days > 60 ? 30 : d.days > 14 ? 5 : 1, (x) => `${x.day} · ${x.n}건`);
+    // 눈금: 7일은 "11/22", 30일 이하는 날짜 숫자만(1,6,11…), 그 이상은 달이 바뀌는 날에 "11월"
+    const dayItems = d.byDay.map((x) => {
+      const [, m, dd] = x.day.split('-');
+      const day = +dd;
+      const label = d.days > 60 ? (day === 1 ? `${+m}월` : '')                       // 1년: 달이 바뀌는 날
+        : d.days > 14 ? (day === 1 ? `${+m}/1` : [5, 10, 15, 20, 25].includes(day) ? String(day) : '')   // 30·90일: 1, 5, 10, 15…
+        : `${+m}/${day}`;                                                            // 7일: 전부
+      return { ...x, label };
+    });
+    const every = 1;
+    $('byDay').innerHTML = cols(dayItems, every, (x) => `${x.day} · ${x.n}건`);
     $('byHour').innerHTML = cols(d.byHour.map((n, h) => ({ n, label: String(h) })), 3, (x) => `${x.label}시 · ${x.n}건`);
     const rooms = d.byRoom.filter((r) => r.guest > 0 || r.staff > 0);
     $('byRoom').innerHTML = rooms.length ? `<table><thead><tr><th>방</th><th class="n">손님</th><th class="n">직원</th><th>마지막</th></tr></thead><tbody>${rooms.map((r) => `<tr><td>${esc(r.name)}</td><td class="n">${r.guest}</td><td class="n">${r.staff}</td><td>${fmtDT(r.last)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">아직 기록이 없습니다.</div>';

@@ -4,47 +4,44 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>벌툰 채팅</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="/style.css">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#111827">
 <style>
   body { height: 100dvh; display: flex; flex-direction: column; }
-  .topbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #111827; color: #fff; }
-  .topbar h1 { font-size: 16px; margin: 0; flex: 1; }
-  .topbar a, .topbar button { color: #fff; background: #374151; border: 0; border-radius: 8px; padding: 7px 10px; font-size: 12px; text-decoration: none; white-space: nowrap; }
-  .topbar .total { background: var(--badge); }
+  .appbar h1 { font-size: 17px; margin: 0; font-weight: 800; }
   .menu { position: relative; }
-  .menu-list { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.15); min-width: 200px; z-index: 50; padding: 6px; }
-  .menu-list a { display: block; color: var(--text); background: none; padding: 10px 12px; font-size: 14px; border-radius: 8px; }
-  .menu-list a:hover { background: #f3f4f6; }
-  .topbar button.warn { background: #f59e0b; color: #111; font-weight: 700; }
+  .menu-list { position: absolute; right: 0; top: calc(100% + 8px); background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.18); min-width: 220px; z-index: 50; padding: 6px; }
+  .menu-list a { display: block; color: var(--text); background: none; padding: 12px 14px; font-size: 15px; font-weight: 600; border-radius: 10px; text-decoration: none; }
+  .menu-list a:hover { background: var(--soft); }
   .layout { flex: 1; display: flex; min-height: 0; }
-  .sidebar { width: 300px; background: var(--card); border-right: 1px solid var(--line); overflow-y: auto; }
-  .search { position: sticky; top: 0; background: var(--card); padding: 8px 10px; border-bottom: 1px solid var(--line); z-index: 1; }
-  .search input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; outline: none; }
+  .sidebar { width: 320px; background: var(--card); border-right: 1px solid var(--line); overflow-y: auto; }
+  .search { position: sticky; top: 0; background: var(--card); padding: 10px 12px; border-bottom: 1px solid var(--line); z-index: 1; }
+  .search input { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 10px 38px; font-size: 15px; outline: none; background: var(--soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 12px center no-repeat; min-height: 44px; }
+  .search input:focus { border-color: var(--accent); background-color: #fff; }
   .room { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
-  .room:hover { background: #f9fafb; }
-  .room.active { background: #eff6ff; }
-  .room .num { width: 44px; height: 44px; border-radius: 12px; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; text-align: center; line-height: 1.1; }
+  .room:hover { background: var(--soft); }
+  .room.active { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--accent); }
+  .room .num { width: 48px; height: 48px; border-radius: 14px; background: #eceef4; color: var(--brand); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 17px; flex-shrink: 0; text-align: center; line-height: 1.1; }
   .room.unread .num { background: var(--badge); color: #fff; animation: blink 1s infinite; }
   .room .info { flex: 1; min-width: 0; }
-  .room .name { font-weight: 600; font-size: 15px; display: flex; justify-content: space-between; }
-  .room .name time { font-weight: 400; font-size: 12px; color: var(--muted); }
-  .room .preview { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-  .room.unread .preview { color: var(--text); font-weight: 500; }
+  .room .name { font-weight: 700; font-size: 16px; display: flex; justify-content: space-between; gap: 8px; }
+  .room .name time { font-weight: 500; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .room .preview { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .room.unread .preview { color: var(--text); font-weight: 600; }
   .panel { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .panel .chat-header .back { display: none; border: 0; background: none; font-size: 20px; padding: 0 6px 0 0; }
-  .panel .chat-header .clear { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 10px; font-size: 13px; color: var(--muted); }
+  .panel .chat-header .back { display: none; border: 0; background: var(--soft); border-radius: 10px; font-size: 22px; width: 40px; height: 40px; line-height: 1; }
+  .panel .chat-header .clear { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 12px; font-size: 14px; font-weight: 600; color: var(--muted); min-height: 40px; }
+  .panel .chat-header .clear:hover { color: var(--danger); border-color: #fecaca; }
   /* 빠른 답장: 옆으로 넘기지 않고 여러 줄로 */
-  .quick { flex-wrap: wrap; overflow: visible; padding: 8px 12px 0; }
-  .quick button { padding: 7px 12px; font-size: 13px; }
-  .msg.them { background: #fff; }
-  .msg.auto { background: #fffbeb; border: 1px solid #fde68a; white-space: pre-line; font-size: 13px; }
-  .msg.auto .tag { display: block; font-size: 11px; font-weight: 700; color: #b45309; margin-bottom: 2px; }
-  .msg.auto img { display: block; max-width: 140px; border-radius: 8px; margin-top: 6px; }
-  .msg.me { background: var(--accent); }
-  .placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 15px; text-align: center; line-height: 1.7; padding: 20px; }
+  .quick { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px 2px; }
+  .quick button { min-height: 40px; padding: 7px 14px; font-size: 14px; border-radius: 999px; background: #fff; }
+  .msg.auto { font-size: 14px; }
+  .msg.auto img { max-width: 160px; }
+  .placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 16px; text-align: center; line-height: 1.7; padding: 24px; }
+  .placeholder .big { font-size: 44px; margin-bottom: 6px; }
   @keyframes blink { 50% { opacity: .35; } }
 
   /* 새 메시지 전체화면 알림 (포스용) */
@@ -58,26 +55,27 @@
   .alert .hint { font-size: 14px; opacity: .8; }
 
   /* 설정 안내 띠 */
-  .setup { background: #fef3c7; color: #78350f; padding: 10px 16px; font-size: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .setup button { background: #b45309; color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: 14px; }
+  .setup { background: var(--warn-soft); color: #78350f; padding: 10px 16px; font-size: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #fde68a; }
+  .setup button { background: #b45309; color: #fff; border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 700; font-size: 14px; min-height: 40px; }
 
   @media (max-width: 700px) {
     .sidebar { width: 100%; }
     .panel { display: none; }
     .layout.open .sidebar { display: none; }
     .layout.open .panel { display: flex; }
-    .panel .chat-header .back { display: inline-block; }
+    .panel .chat-header .back { display: inline-flex; align-items: center; justify-content: center; }
   }
 </style>
 </head>
 <body>
-<header class="topbar">
-  <h1>벌툰 채팅</h1>
+<header class="appbar">
+  <span class="brand"><span class="mark">벌</span><h1>벌툰 채팅</h1></span>
   <span class="badge total" id="total" hidden>0</span>
-  <button id="soundBtn" title="매장 음악이 나오는 포스에서는 꺼두세요">🔕 무음</button>
-  <button id="testBtn" title="알림창을 테스트합니다">알림 테스트</button>
+  <span class="grow"></span>
+  <button class="btn" id="soundBtn" title="매장 음악이 나오는 포스에서는 꺼두세요">🔕 무음</button>
+  <button class="btn" id="testBtn" title="알림창을 테스트합니다">알림 테스트</button>
   <div class="menu">
-    <button id="menuBtn">메뉴 ▾</button>
+    <button class="btn" id="menuBtn">메뉴 ▾</button>
     <div class="menu-list" id="menuList" hidden>
       <a href="/admin/log" target="_blank">📋 대화 기록</a>
       <a href="/admin/stats" target="_blank">📊 통계</a>
@@ -100,7 +98,7 @@
   </aside>
 
   <section class="panel">
-    <div class="placeholder" id="placeholder">왼쪽에서 방을 선택하세요.<br>손님이 메시지를 보내면 화면 전체에 빨간 알림이 뜹니다. 소리는 기본 무음이며 위쪽 버튼으로 켤 수 있습니다.</div>
+    <div class="placeholder" id="placeholder"><span class="big">🛎️</span>왼쪽에서 방을 선택하세요.<br>손님이 메시지를 보내면 화면 전체에 빨간 알림이 뜹니다.<br><span style="font-size:14px">소리는 기본 무음이며 위쪽 버튼으로 켤 수 있습니다.</span></div>
     <div class="chat" id="chat" hidden>
       <header class="chat-header">
         <button class="back" id="back" aria-label="목록으로">‹</button>

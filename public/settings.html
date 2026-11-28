@@ -4,34 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>벌툰 채팅 설정</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <style>
-  body { padding: 20px 16px 60px; max-width: 860px; margin: 0 auto; }
-  .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-  .bar h1 { font-size: 20px; margin: 0; flex: 1; }
-  h2 { font-size: 16px; margin: 28px 0 8px; }
-  .help { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0 0 12px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .page { max-width: 880px; padding-bottom: 96px; }
+  h2 { font-size: 18px; margin: 30px 0 8px; letter-spacing: -.2px; }
+  .help { font-size: 14px; color: var(--muted); line-height: 1.6; margin: 0 0 12px; }
+  .card { margin-bottom: 12px; }
   .card.off { opacity: .75; }
   .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .row + .row { margin-top: 10px; }
-  label.k { font-size: 12px; color: var(--muted); width: 100%; }
-  input[type=text], textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font-size: 15px; outline: none; }
-  input[type=text]:focus, textarea:focus { border-color: var(--accent); }
-  textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+  label.k { font-size: 13px; color: var(--muted); width: 100%; font-weight: 600; }
+  input[type=text], textarea { width: 100%; }
+  textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
   .label-in { flex: 1; min-width: 180px; }
-  .toggle { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; white-space: nowrap; }
-  .toggle input { width: 18px; height: 18px; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; white-space: nowrap; min-height: 44px; }
+  .toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
   .btns { display: flex; gap: 6px; margin-left: auto; }
-  .btns button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+  .btns button { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 12px; font-size: 14px; font-weight: 600; min-height: 40px; }
+  .btns button:disabled { opacity: .4; cursor: default; }
   .btns button.del { color: #b91c1c; }
   .img { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .img img { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
   .img .none { width: 120px; height: 90px; border-radius: 8px; border: 1px dashed var(--line); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); }
-  .file { display: inline-block; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
+  .file { display: inline-flex; align-items: center; border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 14px; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 40px; }
   .file input { display: none; }
-  .preview { background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 10px 12px; font-size: 14px; white-space: pre-line; max-width: 320px; }
+  .preview { background: var(--warn-soft); border: 1px solid #fde68a; border-radius: 14px; padding: 10px 12px; font-size: 15px; white-space: pre-line; max-width: 340px; }
   .preview .tag { display: block; font-size: 11px; font-weight: 700; color: #b45309; margin-bottom: 3px; }
   .preview img { display: block; max-width: 100%; border-radius: 8px; margin-top: 8px; }
   .variants { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
@@ -47,18 +46,22 @@
   .evp .body { margin-top: 6px; font-size: 14px; line-height: 1.5; white-space: pre-line; color: #3f3f46; }
   .evp img { display: block; width: 100%; border-radius: 10px; margin-top: 8px; }
   .evp .go { display: block; margin-top: 10px; background: #e11d48; color: #fff; text-align: center; font-weight: 700; padding: 10px; border-radius: 12px; font-size: 14px; }
-  .add { border: 1px dashed var(--line); background: transparent; border-radius: 12px; padding: 12px; width: 100%; font-size: 14px; color: var(--muted); }
-  .save { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 12px; align-items: center; justify-content: center; }
-  .save button { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 12px 28px; font-size: 16px; font-weight: 700; }
-  .save .msg { font-size: 14px; }
+  .add { border: 2px dashed var(--line); background: transparent; border-radius: var(--radius); padding: 14px; width: 100%; font-size: 15px; font-weight: 600; color: var(--muted); min-height: 48px; }
+  .add:hover { border-color: var(--accent); color: var(--accent); }
+  .save { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.96); backdrop-filter: blur(6px); border-top: 1px solid var(--line); padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 12px; align-items: center; justify-content: center; }
+  .save button { background: var(--accent); color: #fff; border: 0; border-radius: 12px; padding: 12px 36px; font-size: 17px; font-weight: 800; min-height: 48px; }
+  .save .msg { font-size: 15px; }
   .save .msg.ok { color: #15803d; } .save .msg.err { color: #b91c1c; }
 </style>
 </head>
 <body>
-<div class="bar">
-  <h1>벌툰 채팅 설정</h1>
-  <a href="/admin">← 채팅으로</a>
-</div>
+<header class="appbar">
+  <a class="brand" href="/admin"><span class="mark">벌</span>벌툰 채팅</a>
+  <span class="grow"></span>
+  <nav class="tabs"><a href="/admin">채팅</a><a href="/admin/log">대화 기록</a><a href="/admin/stats">통계</a><a href="/admin/settings" class="on">설정</a><a href="/admin/qr" target="_blank">QR 인쇄</a></nav>
+</header>
+<main class="page">
+<div class="toolbar"><h1>설정</h1><span class="muted" style="font-size:14px">저장을 누르면 손님·직원 화면에 바로 적용됩니다</span></div>
 
 <h2>손님 빠른 버튼과 자동 답변</h2>
 <p class="help">
@@ -87,6 +90,7 @@
 <h2>직원 빠른 답장</h2>
 <p class="help">직원 채팅창 아래 버튼입니다. 한 줄에 하나씩, 최대 12개.</p>
 <div class="card"><textarea id="staffReplies" placeholder="바로 가겠습니다"></textarea></div>
+</main>
 
 <div class="save">
   <button id="saveBtn">저장</button>
