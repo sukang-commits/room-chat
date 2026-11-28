@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>벌툰 채팅</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/style.css" onerror="setTimeout(function(){location.reload()},3000)">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#111827">
 <style>
+  [hidden] { display: none !important; }   /* style.css 가 못 와도 숨김 유지 */
   body { height: 100dvh; display: flex; flex-direction: column; }
   .appbar h1 { font-size: 17px; margin: 0; font-weight: 800; }
   .brand .store { font-weight: 600; opacity: .85; font-size: 14px; margin-left: 2px; padding-left: 8px; border-left: 1px solid rgba(255,255,255,.35); }
@@ -329,7 +330,7 @@
     socket.emit('staff:join', { store: STORE.key || STORE.id, password }, (res) => {
       if (res.error) { alert(res.error); return; }
       // 서버가 새 버전으로 바뀌었으면(배포) 화면을 새로 불러옴
-      if (window.__ver && res.version && res.version !== window.__ver) { location.reload(); return; }
+      if (window.__ver && res.version && res.version !== window.__ver) { safeReload(); return; }
       window.__ver = res.version;
       rooms = res.rooms; messages = res.messages || {};
       renderRooms(); if (current) renderChat();
@@ -364,6 +365,12 @@
   $('menuBtn').onclick = (e) => { e.stopPropagation(); $('menuList').hidden = !$('menuList').hidden; };
   document.addEventListener('click', () => { $('menuList').hidden = true; });
 
+  // 서버가 정상 응답할 때만 새로고침 (배포 중이면 3초 뒤 다시 확인)
+  function safeReload(tries) {
+    tries = tries || 0;
+    fetch(BASE + '/api/rooms', { cache: 'no-store' }).then((r) => { if (r.ok) location.reload(); else throw new Error(); })
+      .catch(() => { if (tries < 20) setTimeout(() => safeReload(tries + 1), 3000); });
+  }
   // 첫 클릭 때 소리 잠금 해제 (브라우저 정책)
   document.addEventListener('pointerdown', unlockAudio, { once: true });
   renderSoundBtn();

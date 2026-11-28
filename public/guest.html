@@ -6,8 +6,9 @@
 <title>벌툰 채팅</title>
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/style.css" onerror="setTimeout(function(){location.reload()},3000)">
 <style>
+  [hidden] { display: none !important; }   /* style.css 가 못 와도 숨김 유지 */
   body { height: 100dvh; }
   .chat-header .brand { display: inline-flex; }
   .chat-header .titles { flex: 1; min-width: 0; }
@@ -146,7 +147,7 @@
     document.getElementById('status').textContent = '직원이 바로 확인합니다';
     socket.emit('guest:join', { store: STORE, room: roomId }, (res) => {
       if (res.error) { document.getElementById('roomName').textContent = res.error; return; }
-      if (window.__ver && res.version && res.version !== window.__ver) { location.reload(); return; }
+      if (window.__ver && res.version && res.version !== window.__ver) { fetch(BASE + '/api/guest-config', { cache: 'no-store' }).then((r) => { if (r.ok) location.reload(); }).catch(() => {}); return; }
       window.__ver = res.version;
       document.getElementById('roomName').textContent = res.room.name + ' 손님';
       document.title = (res.store && res.store.name ? res.store.name + ' ' : '') + res.room.name + ' 채팅';
