@@ -10,9 +10,12 @@
 <style>
   [hidden] { display: none !important; }   /* style.css 가 못 와도 숨김 유지 */
   body { height: 100dvh; }
+  .chat-header { padding: 8px 14px; gap: 10px; }
   .chat-header .brand { display: inline-flex; }
-  .chat-header .titles { flex: 1; min-width: 0; }
-  .chat-header h1 { font-size: 20px; }
+  .chat-header .brand .mark { width: 26px; height: 26px; font-size: 13px; }
+  .chat-header .titles { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .chat-header h1 { font-size: 16px; }
+  .chat-header .sub { font-size: 12px; }
   .chat-header .dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca3af; flex-shrink: 0; }
   .chat-header .dot.on { background: #22c55e; }
   /* 리뷰 이벤트 안내 카드 */
@@ -35,7 +38,17 @@
   .kakao.compact .body { display: none; }
   .kakao.compact a.go { margin: 0; padding: 9px 12px; font-size: 14px; white-space: nowrap; }
   /* 장난 주의 문구 */
-  .warn { margin: 0; padding: 6px 14px 0; font-size: 11.5px; line-height: 1.4; color: #9ca3af; background: var(--card); text-align: center; }
+  .warn { margin: 0; padding: 4px 14px 0; font-size: 10.5px; line-height: 1.35; color: #9ca3af; background: var(--card); text-align: center; }
+  /* 빠른 버튼·입력칸: 대화가 더 많이 보이게 작게 */
+  .quick { gap: 6px; padding: 8px 10px 0; }
+  .quick button { min-height: 36px; padding: 6px 10px; font-size: 13.5px; border-radius: 10px; }
+  .composer { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
+  .composer input { min-height: 42px; padding: 9px 14px; font-size: 15px; }
+  .composer button { min-height: 42px; padding: 0 16px; font-size: 15px; }
+  .messages { padding: 12px 12px; gap: 8px; }
+  .msg { font-size: 15px; padding: 9px 12px; }
+  .event { margin: 8px 12px 0; padding: 10px 12px; }
+  .kakao { margin: 8px 12px 0; padding: 10px 12px; }
 </style>
 </head>
 <body>
@@ -150,9 +163,11 @@
       if (res.error) { document.getElementById('roomName').textContent = res.error; return; }
       if (window.__ver && res.version && res.version !== window.__ver) { fetch(BASE + '/api/guest-config', { cache: 'no-store' }).then((r) => { if (r.ok) location.reload(); }).catch(() => {}); return; }
       window.__ver = res.version;
-      document.getElementById('roomName').textContent = res.room.name + ' 손님';
-      document.title = (res.store && res.store.name ? res.store.name + ' ' : '') + res.room.name + ' 채팅';
-      if (res.store && res.store.name) document.getElementById('status').textContent = res.store.name + ' · 직원이 바로 확인합니다';
+      // 손님에게 방 번호는 보여주지 않음 (어느 방인지는 직원 화면에서만)
+      const storeName = (res.store && res.store.name) || '벌툰';
+      document.getElementById('roomName').textContent = storeName;
+      document.title = storeName + ' 채팅';
+      document.getElementById('status').textContent = '직원이 바로 확인합니다';
       $msgs.querySelectorAll('.msg').forEach((e) => e.remove());
       $empty.style.display = res.messages.length ? 'none' : '';
       res.messages.forEach(render);
