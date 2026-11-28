@@ -84,14 +84,15 @@
   function renderEvent(ev) {
     const $ev = document.getElementById('event');
     if (!ev) { $ev.hidden = true; return; }
-    let folded = !!ev.folded;   // 설정에서 '처음엔 접힌 상태'면 제목만 보임. 손님이 펼치면 이 접속 동안 기억
-    try { const saved = sessionStorage.getItem('eventFolded'); if (saved !== null) folded = saved === '1'; } catch (e) {}
+    // 설정에서 '처음엔 접힌 상태'면 제목만 보임. 손님이 펼치면 화면을 새로 열기 전까지만 유지 (예전 기억은 쓰지 않음)
+    let folded = !!ev.folded;
+    if (window.__eventFolded !== undefined) folded = window.__eventFolded;
     $ev.className = 'event' + (folded ? ' folded' : '');
     $ev.innerHTML = `<div class="head"><b></b><button type="button">${folded ? '펼치기' : '접기'}</button></div><div class="body"></div>${ev.image ? `<img src="${ev.image}" alt="">` : ''}${ev.link ? `<a class="go" href="${ev.link}" target="_blank" rel="noopener"></a>` : ''}`;
     $ev.querySelector('.head b').textContent = ev.title || '안내';
     $ev.querySelector('.body').textContent = ev.text || '';
     if (ev.link) $ev.querySelector('a.go').textContent = ev.linkLabel || '자세히 보기';
-    $ev.querySelector('.head button').onclick = () => { const f = $ev.classList.toggle('folded'); $ev.querySelector('.head button').textContent = f ? '펼치기' : '접기'; try { sessionStorage.setItem('eventFolded', f ? '1' : '0'); } catch (e) {} };
+    $ev.querySelector('.head button').onclick = () => { const f = $ev.classList.toggle('folded'); $ev.querySelector('.head button').textContent = f ? '펼치기' : '접기'; window.__eventFolded = f; };
     $ev.hidden = false;
   }
 
