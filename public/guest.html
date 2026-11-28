@@ -119,6 +119,8 @@
     document.getElementById('status').textContent = '직원이 바로 확인합니다';
     socket.emit('guest:join', { store: STORE, room: roomId }, (res) => {
       if (res.error) { document.getElementById('roomName').textContent = res.error; return; }
+      if (window.__ver && res.version && res.version !== window.__ver) { location.reload(); return; }
+      window.__ver = res.version;
       document.getElementById('roomName').textContent = res.room.name + ' 손님';
       document.title = (res.store && res.store.name ? res.store.name + ' ' : '') + res.room.name + ' 채팅';
       if (res.store && res.store.name) document.getElementById('status').textContent = res.store.name + ' · 직원이 바로 확인합니다';

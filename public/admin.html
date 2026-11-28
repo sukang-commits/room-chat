@@ -319,6 +319,9 @@
     if (!password) await loadConfig();
     socket.emit('staff:join', { store: STORE.key || STORE.id, password }, (res) => {
       if (res.error) { alert(res.error); return; }
+      // 서버가 새 버전으로 바뀌었으면(배포) 화면을 새로 불러옴
+      if (window.__ver && res.version && res.version !== window.__ver) { location.reload(); return; }
+      window.__ver = res.version;
       rooms = res.rooms; messages = res.messages || {};
       renderRooms(); if (current) renderChat();
       // 꺼져 있던 동안 온 메시지: 안 읽은 방이 있으면 가장 최근 것으로 바로 전체화면 알림

@@ -23,6 +23,7 @@ const BASE_URL = process.env.BASE_URL || '';                           // QR에 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');  // 영구 디스크 경로
 const STORES_FILE = path.join(DATA_DIR, 'stores.json');                // 추가 매장 목록
 const KST_OFFSET = 9 * 3600000;
+const BUILD_ID = (process.env.RENDER_GIT_COMMIT || '').slice(0, 10) || String(Date.now());   // 배포 버전. 바뀌면 열려 있는 화면이 스스로 새로고침
 
 const DEFAULT_SETTINGS = {
   guestButtons: [
@@ -343,7 +344,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res) => res.set('Cache-Control', 'no-cache') }));
 app.use(express.json({ limit: '8mb' }));
 // 업로드 사진: /uploads/<파일>(기본 매장), /uploads/<매장>/<파일>
 app.get('/uploads/:store/:file', (req, res, next) => {
@@ -571,7 +572,7 @@ io.on('connection', (socket) => {
     if (!room) return cb && cb({ error: '잘못된 주소입니다. QR을 다시 찍어 주세요.' });
     socket.data.role = 'guest'; socket.data.store = st.id; socket.data.room = room;
     socket.join(`room:${st.id}:${room}`); socket.join(`guests:${st.id}`);
-    cb && cb({ store: { id: st.id, name: st.name }, room: st.roomById[room], messages: st.history(room) });
+    cb && cb({ store: { id: st.id, name: st.name }, room: st.roomById[room], messages: st.history(room), version: BUILD_ID });
   });
 
   // 손님 메시지
@@ -604,7 +605,7 @@ io.on('connection', (socket) => {
     noteOk(ip);
     socket.data.role = 'staff'; socket.data.store = st.id;
     socket.join(`staff:${st.id}`);
-    cb && cb({ store: { id: st.id, name: st.name }, rooms: st.allSummaries(), messages: st.data.messages });
+    cb && cb({ store: { id: st.id, name: st.name }, rooms: st.allSummaries(), messages: st.data.messages, version: BUILD_ID });
   });
 
   // 직원 답장
@@ -644,7 +645,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`방 채팅 서버 실행 중: http://localhost:${PORT}`);
+  console.log(`방 채팅 서버 실행 중: http://localhost:${PORT} (버전 ${BUILD_ID})`);
   console.log(`직원 화면: http://localhost:${PORT}/admin  (비밀번호: ${ADMIN_PASSWORD})`);
   console.log(`본사 화면: http://localhost:${PORT}/hq ${MASTER_PASSWORD ? '' : '(꺼짐: MASTER_PASSWORD 를 ADMIN_PASSWORD 와 다른 값으로 설정하세요)'}`);
   console.log(`매장: ${Object.values(stores).map((s) => `${s.name}(${s.id}, 방 ${s.rooms.length}개)`).join(', ')}`);
