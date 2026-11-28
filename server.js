@@ -37,6 +37,9 @@ const DEFAULT_SETTINGS = {
   staffReplies: ['에어컨 온도 올려드릴게요', '에어컨 온도 낮춰드릴게요', '시끄러운 방 알려주시면 주의 드릴게요', 'OTT 어떤 게 안되실까요?', '바로 가겠습니다', '카운터로 와주세요'],
   // 손님 채팅 맨 위에 항상 보이는 안내 카드 (리뷰 이벤트 등)
   event: { on: false, title: '리뷰 이벤트 🎁', text: '네이버 리뷰 남기고 카운터에서 뽑기권 받아 가세요!', link: '', linkLabel: '네이버 리뷰 쓰러 가기', image: '' },
+  // 카카오톡 채널 안내 (불만·건의는 점장에게) + 장난 주의 문구
+  kakao: { on: false, compact: false, title: '직접 말씀하기 어려운 불만이 있다면', text: '카카오톡으로 남겨 주시면 점장이 직접 확인하고 연락드립니다. 매장에서 바로 말하기 어려운 내용도 괜찮습니다.', linkLabel: '불만·건의 남기기 (카카오톡)', link: '' },
+  warning: { on: false, text: '허위·장난 요청은 업무방해로 신고될 수 있습니다. 모든 메시지는 접속 기록과 함께 보관됩니다.' },
   migrations: ['adult-pin'],   // 기본값에는 이미 들어 있으므로 다시 끼워 넣지 않음
 };
 
@@ -216,7 +219,13 @@ function createStore(id, cfg) {
     let link = clean(ev.link, 300);
     if (!/^https?:\/\/[^\s]+$/i.test(link)) link = '';
     const event = { on: !!ev.on, title: clean(ev.title, 40), text: clean(ev.text, 500), link, linkLabel: clean(ev.linkLabel, 30) || '자세히 보기', image: resolveImage(ev) };
-    S.settings = { ...S.settings, guestButtons: out, staffReplies: replies.length ? replies : DEFAULT_SETTINGS.staffReplies, event };
+    const kk = input.kakao && typeof input.kakao === 'object' ? input.kakao : {};
+    let klink = clean(kk.link, 300);
+    if (!/^https?:\/\/[^\s]+$/i.test(klink)) klink = '';
+    const kakao = { on: !!kk.on, compact: !!kk.compact, title: clean(kk.title, 40), text: clean(kk.text, 300), linkLabel: clean(kk.linkLabel, 30) || '카카오톡으로 연락하기', link: klink };
+    const wn = input.warning && typeof input.warning === 'object' ? input.warning : {};
+    const warning = { on: !!wn.on, text: clean(wn.text, 200) };
+    S.settings = { ...S.settings, guestButtons: out, staffReplies: replies.length ? replies : DEFAULT_SETTINGS.staffReplies, event, kakao, warning };
     S.saveSettings();
     try {   // 더 이상 쓰지 않는 업로드 이미지 정리
       const used = new Set([...out.flatMap((b) => [b.image, ...(b.variants || []).map((v) => v.image)]), event.image].filter(Boolean).map((u) => u.slice(uploadUrl.length)));
@@ -430,6 +439,8 @@ storeRouter.get('/api/guest-config', (req, res) => {
     store: { id: st.id, name: st.name },
     buttons: st.settings.guestButtons.map((b) => ({ id: b.id, label: b.label })),
     event: st.settings.event && st.settings.event.on && (st.settings.event.text || st.settings.event.title) ? st.settings.event : null,
+    kakao: st.settings.kakao && st.settings.kakao.on && st.settings.kakao.link ? st.settings.kakao : null,
+    warning: st.settings.warning && st.settings.warning.on && st.settings.warning.text ? st.settings.warning.text : '',
   });
 });
 storeRouter.get('/api/rooms', (req, res) => res.json(req.store.rooms));
