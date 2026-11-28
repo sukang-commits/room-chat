@@ -40,8 +40,12 @@
   /* 빠른 답장: 옆으로 넘기지 않고 여러 줄로 */
   .quick { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px 2px; }
   .quick button { min-height: 40px; padding: 7px 14px; font-size: 14px; border-radius: 999px; background: #fff; }
-  .msg.auto { font-size: 14px; }
+  /* 자동 답변은 우리 쪽(오른쪽)에 표시 */
+  .msg.auto { align-self: flex-end; background: #e0ecff; border: 1px solid #bfd3ff; color: var(--text); border-bottom-right-radius: 6px; border-bottom-left-radius: 18px; font-size: 14px; }
+  .msg.auto .tag { color: #1d4ed8; }
+  .msg.auto .time { color: var(--muted); }
   .msg.auto img { max-width: 160px; }
+  .msg.them .handled { display: block; font-size: 11px; color: #1d4ed8; font-weight: 700; margin-bottom: 2px; }
   .placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 16px; text-align: center; line-height: 1.7; padding: 24px; }
   .placeholder .big { font-size: 44px; margin-bottom: 6px; }
   @keyframes blink { 50% { opacity: .35; } }
@@ -252,7 +256,7 @@
         ${r.unread ? `<span class="badge">${r.unread}</span>` : ''}`;
       div.querySelector('.num').textContent = r.name.replace('번방', '');
       div.querySelector('.name span').textContent = r.name;
-      if (r.last) div.querySelector('.preview').textContent = (r.last.from === 'staff' ? '나: ' : '') + r.last.text;
+      if (r.last) div.querySelector('.preview').textContent = (r.last.from === 'staff' ? '나: ' : r.last.auto ? '🤖 ' : '') + r.last.text;
       div.onclick = () => open(r.id);
       $rooms.appendChild(div);
     });
@@ -265,11 +269,11 @@
   function renderMsg(m) {
     const div = document.createElement('div');
     if (m.from === 'auto') {
-      div.className = 'msg them auto';
-      div.innerHTML = `<span class="tag">💡 자동 답변 (손님에게 전송됨)</span><span class="text"></span>${m.image ? `<img src="${m.image}" alt="">` : ''}<span class="time">${fmt(m.at)}</span>`;
+      div.className = 'msg auto';
+      div.innerHTML = `<span class="tag">🤖 자동 답변 · 이미 손님에게 나갔습니다</span><span class="text"></span>${m.image ? `<img src="${m.image}" alt="">` : ''}<span class="time">${fmt(m.at)}</span>`;
     } else {
       div.className = 'msg ' + (m.from === 'staff' ? 'me' : 'them');
-      div.innerHTML = `<span class="text"></span><span class="time">${fmt(m.at)}</span>`;
+      div.innerHTML = `${m.from === 'guest' && m.auto ? '<span class="handled">자동 답변으로 처리됨 · 답장 안 해도 됩니다</span>' : ''}<span class="text"></span><span class="time">${fmt(m.at)}</span>`;
     }
     div.querySelector('.text').textContent = m.text;
     $msgs.appendChild(div);
@@ -320,7 +324,7 @@
       // 꺼져 있던 동안 온 메시지: 안 읽은 방이 있으면 가장 최근 것으로 바로 전체화면 알림
       const unreadRooms = rooms.filter((r) => r.unread);
       if (unreadRooms.length && $alert.hidden) {
-        const lastOf = (r) => (messages[r.id] || []).filter((m) => m.from === 'guest').pop();
+        const lastOf = (r) => (messages[r.id] || []).filter((m) => m.from === 'guest' && !m.auto).pop();
         const latest = unreadRooms.map(lastOf).filter(Boolean).sort((a, b) => b.at - a.at)[0];
         unreadRooms.forEach((r) => { const m = lastOf(r); if (m && m !== latest) pending.push(m); });
         if (latest) showAlert(latest); else startRinging();
@@ -333,6 +337,7 @@
     (messages[m.room] = messages[m.room] || []).push(m);
     if (m.room === current) { renderMsg(m); $msgs.scrollTop = $msgs.scrollHeight; }
     if (m.from !== 'guest') return;
+    if (m.auto) return;   // 자동 답변으로 처리된 메시지: 알림·소리 없음
     // 보고 있는 방에 온 메시지이고 창이 앞에 있으면 소리만, 아니면 전체화면 알림
     if (m.room === current && document.visibilityState === 'visible' && document.hasFocus()) { ring(); socket.emit('staff:read', { room: m.room }); }
     else showAlert(m);

@@ -111,7 +111,7 @@ function createStore(id, cfg) {
     const msgs = S.history(roomId);
     const last = [...msgs].reverse().find((m) => m.from !== 'auto') || null;
     const lastRead = S.data.lastRead[roomId] || 0;
-    const unread = msgs.filter((m) => m.from === 'guest' && m.at > lastRead).length;
+    const unread = msgs.filter((m) => m.from === 'guest' && !m.auto && m.at > lastRead).length;   // 자동 답변으로 처리된 건 안 읽음에서 제외
     return { ...S.roomById[roomId], last, unread };
   };
   S.allSummaries = () => S.rooms.map((r) => S.roomSummary(r.id));
@@ -581,11 +581,11 @@ io.on('connection', (socket) => {
     if (socket.data.role !== 'guest' || !st || !room) return;
     text = String(text || '').trim().slice(0, 500);
     if (!text) return;
-    const msg = st.addMessage(room, 'guest', text);
+    // 자동 답변이 있으면 손님 메시지에 '자동 처리됨' 표시 -> 직원 화면에서 알림·안 읽음 없이 조용히 보임
+    const auto = st.findAutoReply(text, typeof quick === 'string' ? quick : '', room);
+    const msg = st.addMessage(room, 'guest', text, auto ? { auto: true } : {});
     io.to(`room:${st.id}:${room}`).emit('message', msg);
     io.to(`staff:${st.id}`).emit('message', msg);
-    // 자동 답변: 직원 알림은 그대로 가고, 손님에게는 즉시 안내가 뜸
-    const auto = st.findAutoReply(text, typeof quick === 'string' ? quick : '', room);
     if (auto) {
       const am = st.addMessage(room, 'auto', auto.text, auto.image ? { image: auto.image } : {});
       io.to(`room:${st.id}:${room}`).emit('message', am);
