@@ -27,12 +27,12 @@ const BUILD_ID = (process.env.RENDER_GIT_COMMIT || '').slice(0, 10) || String(Da
 
 const DEFAULT_SETTINGS = {
   guestButtons: [
-    { id: 'cold', label: '추워요 🥶', on: false, reply: '', image: '', keywords: [] },
-    { id: 'hot', label: '더워요 🥵', on: false, reply: '', image: '', keywords: [] },
-    { id: 'noise', label: '시끄러워요 🔇', on: false, reply: '', image: '', keywords: [] },
-    { id: 'ott', label: 'OTT 어떻게 해요? 📺', on: false, reply: '리모컨 사용 순서를 여기에 적어 주세요.\n1. \n2. \n3. \n그래도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['ott', '넷플', '유튜브', '리모컨', '티비', 'tv', '빔프'] },
-    { id: 'adult', label: '성인인증 비밀번호가 뭐예요? 🔑', on: false, reply: '성인인증 비밀번호: (여기에 입력)\n입력해도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['성인', '인증', '성인인증', '19금'] },
-    { id: 'wifi', label: '와이파이가 안돼요', on: false, reply: '와이파이 이름: (여기에 입력)\n비밀번호: (여기에 입력)\n연결이 계속 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['와이파이', 'wifi', '비밀번호', '비번', '인터넷'] },
+    { id: 'cold', label: '추워요 🥶', kind: 'request', on: false, reply: '', image: '', keywords: [] },
+    { id: 'hot', label: '더워요 🥵', kind: 'request', on: false, reply: '', image: '', keywords: [] },
+    { id: 'noise', label: '시끄러워요 🔇', kind: 'request', on: false, reply: '', image: '', keywords: [] },
+    { id: 'ott', label: 'OTT 어떻게 해요? 📺', kind: 'faq', on: false, reply: '리모컨 사용 순서를 여기에 적어 주세요.\n1. \n2. \n3. \n그래도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['ott', '넷플', '유튜브', '리모컨', '티비', 'tv', '빔프'] },
+    { id: 'adult', label: '성인인증 비밀번호가 뭐예요? 🔑', kind: 'faq', on: false, reply: '성인인증 비밀번호: (여기에 입력)\n입력해도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['성인', '인증', '성인인증', '19금'] },
+    { id: 'wifi', label: '와이파이가 안돼요', kind: 'faq', on: false, reply: '와이파이 이름: (여기에 입력)\n비밀번호: (여기에 입력)\n연결이 계속 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['와이파이', 'wifi', '비밀번호', '비번', '인터넷'] },
   ],
   staffReplies: ['에어컨 온도 올려드릴게요', '에어컨 온도 낮춰드릴게요', '시끄러운 방 알려주시면 주의 드릴게요', 'OTT 어떤 게 안되실까요?', '바로 가겠습니다', '카운터로 와주세요'],
   // 손님 채팅 맨 위에 항상 보이는 안내 카드 (리뷰 이벤트 등)
@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS = {
   // 카카오톡 채널 안내 (불만·건의는 점장에게) + 장난 주의 문구
   kakao: { on: false, compact: false, title: '직접 말씀하기 어려운 불만이 있다면', text: '카카오톡으로 남겨 주시면 점장이 직접 확인하고 연락드립니다. 매장에서 바로 말하기 어려운 내용도 괜찮습니다.', linkLabel: '불만·건의 남기기 (카카오톡)', link: '' },
   warning: { on: false, text: '허위·장난 요청은 업무방해로 신고될 수 있습니다. 모든 메시지는 접속 기록과 함께 보관됩니다.' },
-  migrations: ['adult-pin'],   // 기본값에는 이미 들어 있으므로 다시 끼워 넣지 않음
+  migrations: ['adult-pin', 'kinds'],   // 기본값에는 이미 들어 있으므로 다시 끼워 넣지 않음
 };
 
 const STORE_ID_RE = /^[a-z0-9][a-z0-9-]{1,19}$/;
@@ -141,6 +141,28 @@ function createStore(id, cfg) {
     S.settings.migrations.push('adult-pin');
     S.saveSettings();
   }
+  if (hadSaved && !S.settings.migrations.includes('kinds')) {
+    const faqIds = ['ott', 'adult', 'wifi'];
+    S.settings.guestButtons.forEach((b) => { if (!b.kind) b.kind = faqIds.includes(b.id) || /와이파이|ott|성인|인증|wifi/i.test(String(b.label)) ? 'faq' : 'request'; });
+    S.settings.migrations.push('kinds');
+    S.saveSettings();
+  }
+  // 방에 맞는 답(방 묶음 우선) 찾기
+  S.answerFor = (b, roomId) => {
+    const v = (b.variants || []).find((x) => (x.roomIds || []).includes(String(roomId)));
+    return { text: String((v && v.reply) || b.reply || '').trim(), image: (v && v.image) || b.image || '' };
+  };
+  // 손님 화면용: 요청 버튼(채팅 탭) + 질문(안내 탭) 목록.
+  // 질문은 켜져 있고 답이 있을 때만 안내 탭에 들어가고, 아니면 예전처럼 채팅 탭에서 직원에게 묻는 버튼이 됨
+  S.guestMenu = (roomId) => {
+    const requests = [], faq = [];
+    for (const b of S.settings.guestButtons || []) {
+      const a = (b.kind || 'request') === 'faq' && b.on ? S.answerFor(b, roomId) : null;
+      if (a && a.text) faq.push({ id: b.id, label: b.label, text: a.text, image: a.image });
+      else requests.push({ id: b.id, label: b.label });
+    }
+    return { requests, faq };
+  };
   // "1-10, 15, 22" 같은 방 범위 문자열 -> 방 id 배열 (없는 방은 무시)
   S.parseRoomSpec = (spec) => {
     const ids = new Set();
@@ -208,7 +230,7 @@ function createStore(id, cfg) {
       }
       out.push({
         id: /^[a-z0-9_-]{1,20}$/i.test(String(b.id || '')) ? String(b.id) : newId('b'),
-        label, on: !!b.on, reply: clean(b.reply, 1000), image: resolveImage(b),
+        label, kind: b.kind === 'faq' ? 'faq' : 'request', on: !!b.on, reply: clean(b.reply, 1000), image: resolveImage(b),
         keywords: (Array.isArray(b.keywords) ? b.keywords : String(b.keywords || '').split(',')).map((k) => clean(k, 20)).filter(Boolean).slice(0, 10),
         variants,
       });
@@ -241,6 +263,7 @@ function createStore(id, cfg) {
     const since = now - days * dayMs;
     const allRows = S.statsLog.filter((r) => r.at >= since);
     const autoCount = allRows.filter((r) => r.from === 'auto').length;
+    const faqViews = allRows.filter((r) => r.from === 'faq').length;
     const rows = allRows.filter((r) => r.from === 'guest' || r.from === 'staff');   // 자동 답변·퇴실 표시는 직원 응답으로 치지 않음
     const guest = rows.filter((r) => r.from === 'guest');
     const kst = (ts) => new Date(ts + KST_OFFSET);
@@ -277,6 +300,7 @@ function createStore(id, cfg) {
         all: S.statsLog.filter((r) => r.from === 'guest').length,
         staffPeriod: rows.length - guest.length,
         auto: autoCount,
+        faqViews,
         activeRooms: Object.values(byRoom).filter((b) => b.guest > 0).length,
         avgWait, medWait, answered: waits.length, unanswered: Object.keys(open).length,
       },
@@ -414,7 +438,7 @@ function hqAuth(req, res, next) {
 }
 const pub = (f) => path.join(__dirname, 'public', f);
 const fmtKST = (ts) => { const d = new Date(ts + KST_OFFSET); return d.toISOString().slice(0, 10) + ' ' + d.toISOString().slice(11, 16); };
-const FROM_LABEL = { guest: '손님', staff: '직원', auto: '자동 답변', system: '시스템' };
+const FROM_LABEL = { guest: '손님', staff: '직원', auto: '자동 답변', system: '시스템', faq: '안내 조회' };
 
 // =====================================================================
 // 매장 라우터: 기본 매장은 / 아래, 추가 매장은 /s/<매장아이디>/ 아래에 같은 경로로 붙음
@@ -435,9 +459,12 @@ storeRouter.get('/r/:slug', (req, res) => {
 });
 storeRouter.get('/api/guest-config', (req, res) => {
   const st = req.store;
+  const roomId = st.parseSlug(req.query.room);
+  const menu = st.guestMenu(roomId || '');
   res.json({
     store: { id: st.id, name: st.name },
-    buttons: st.settings.guestButtons.map((b) => ({ id: b.id, label: b.label })),
+    buttons: menu.requests,
+    faq: roomId ? menu.faq : [],
     event: st.settings.event && st.settings.event.on && (st.settings.event.text || st.settings.event.title) ? st.settings.event : null,
     kakao: st.settings.kakao && st.settings.kakao.on && st.settings.kakao.link ? st.settings.kakao : null,
     warning: st.settings.warning && st.settings.warning.on && st.settings.warning.text ? st.settings.warning.text : '',
@@ -596,14 +623,23 @@ io.on('connection', (socket) => {
   });
 
   // 손님 메시지
-  socket.on('guest:message', ({ text, quick }, cb) => {
+  // 손님이 안내 탭에서 질문을 열어봄 (통계용)
+  socket.on('guest:faq', ({ id }) => {
+    const st = storeById(socket.data.store);
+    if (socket.data.role !== 'guest' || !st) return;
+    const b = (st.settings.guestButtons || []).find((x) => x.id === id);
+    if (b) st.logStat({ room: socket.data.room, from: 'faq', text: b.label, at: Date.now() });
+  });
+
+  socket.on('guest:message', ({ text, quick, noAuto }, cb) => {
     const st = storeById(socket.data.store);
     const room = socket.data.room;
     if (socket.data.role !== 'guest' || !st || !room) return;
     text = String(text || '').trim().slice(0, 500);
     if (!text) return;
     // 자동 답변이 있으면 손님 메시지에 '자동 처리됨' 표시 -> 직원 화면에서 알림·안 읽음 없이 조용히 보임
-    const auto = st.findAutoReply(text, typeof quick === 'string' ? quick : '', room);
+    // (안내를 보고도 안 돼서 직원을 부르는 경우는 noAuto 로 자동 답변을 건너뜀)
+    const auto = noAuto ? null : st.findAutoReply(text, typeof quick === 'string' ? quick : '', room);
     const msg = st.addMessage(room, 'guest', text, auto ? { auto: true } : {});
     io.to(`room:${st.id}:${room}`).emit('message', msg);
     io.to(`staff:${st.id}`).emit('message', msg);

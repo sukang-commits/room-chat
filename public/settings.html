@@ -22,6 +22,7 @@
   input[type=text], textarea { width: 100%; }
   textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
   .label-in { flex: 1; min-width: 180px; }
+  .kind-in { min-height: 44px; }
   .toggle { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; white-space: nowrap; min-height: 44px; }
   .toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
   .btns { display: flex; gap: 6px; margin-left: auto; }
@@ -71,20 +72,21 @@
 <main class="page">
 <div class="toolbar"><h1>설정</h1><span class="muted" style="font-size:14px">저장을 누르면 손님·직원 화면에 바로 적용됩니다</span></div>
 
-<h2>손님 빠른 버튼과 자동 답변</h2>
+<h2>손님 버튼 (직원 호출 요청 / 질문·안내)</h2>
 <p class="help">
-  손님 화면에 나오는 버튼입니다. <b>자동 답변을 켜면</b> 손님이 그 버튼을 누르거나 키워드가 들어간 글을 보냈을 때, 직원이 보기 전에 아래 내용이 손님에게 바로 뜹니다.
-  직원 화면에는 평소처럼 알림이 갑니다. 와이파이 이름과 비밀번호, OTT 리모컨 순서 같은 걸 적어 두면 절반은 손님이 스스로 해결합니다. 사진도 한 장 붙일 수 있습니다.
+  손님 화면은 <b>💬 직원 호출</b> 탭과 <b>📖 안내 · 이벤트</b> 탭으로 나뉩니다. 버튼마다 종류를 고르세요.<br>
+  <b>직원 호출 요청</b>(추워요, 더워요…)은 채팅 탭의 버튼으로 나가고, 누르면 직원에게 바로 알림이 갑니다. 자동 답변을 켜 두면 알림 전에 아래 글이 손님에게 먼저 뜹니다.<br>
+  <b>질문·안내</b>(와이파이, OTT, 성인인증…)는 "안내 탭에 보이기"를 켜고 답을 적어 두면 안내 탭의 자주 묻는 질문에 들어갑니다. 손님이 질문을 누르면 답과 사진이 바로 보이고, 직원에게는 알림이 가지 않습니다.
+  답을 보고도 안 되면 손님이 "그래도 안 돼요, 직원 불러주세요"를 눌러 직원을 부를 수 있습니다. 답을 적지 않았거나 꺼 두면 예전처럼 채팅 탭에서 직원에게 묻는 버튼으로 나갑니다.
 </p>
 <div id="buttons"></div>
 <button class="add" id="addBtn">+ 버튼 추가</button>
 
-<h2>리뷰 이벤트 안내 (손님 채팅 맨 위에 항상 표시)</h2>
-<p class="help">손님이 QR을 찍고 채팅을 열면 맨 위에 이 카드가 보입니다. 네이버 리뷰 링크를 넣으면 빨간 버튼이 생겨서 바로 리뷰 페이지로 갑니다. 손님은 카드를 접을 수 있습니다.</p>
+<h2>리뷰 이벤트 안내</h2>
+<p class="help">안내 · 이벤트 탭 맨 위에 이 카드가 보이고, 채팅 탭 위에도 제목이 한 줄 띠로 보입니다 (띠를 누르면 안내 탭으로 갑니다). 네이버 리뷰 링크를 넣으면 빨간 버튼이 생겨서 바로 리뷰 페이지로 갑니다.</p>
 <div class="card" id="eventCard">
   <div class="row">
     <label class="toggle"><input type="checkbox" id="evOn"> 안내 카드 켜기</label>
-    <label class="toggle"><input type="checkbox" id="evFolded"> 처음엔 접힌 상태로 (제목 한 줄만 보임, 손님이 펼치면 내용 표시)</label>
   </div>
   <div class="row"><label class="k">제목</label><input type="text" id="evTitle" maxlength="40" placeholder="리뷰 이벤트 🎁"></div>
   <div class="row"><label class="k">내용</label><textarea id="evText" placeholder="네이버 리뷰 남기고 카운터에서 뽑기권 받아 가세요!"></textarea></div>
@@ -97,7 +99,7 @@
 </div>
 
 <h2>카카오톡 채널 안내 (불만·건의는 점장에게)</h2>
-<p class="help">손님 채팅 위에 흰 카드로 보입니다. 버튼을 누르면 매장 카카오톡 채널 채팅이 열려서, 근무자가 아니라 점장이 직접 받을 수 있습니다. 채널 채팅 주소는 카카오톡 채널 관리자센터에서 복사합니다. (예: http://pf.kakao.com/_abcdef/chat)</p>
+<p class="help">안내 · 이벤트 탭 맨 아래에 흰 카드로 보입니다. 버튼을 누르면 매장 카카오톡 채널 채팅이 열려서, 근무자가 아니라 점장이 직접 받을 수 있습니다. 채널 채팅 주소는 카카오톡 채널 관리자센터에서 복사합니다. (예: http://pf.kakao.com/_abcdef/chat)</p>
 <div class="card" id="kakaoCard">
   <div class="row">
     <label class="toggle"><input type="checkbox" id="kkOn"> 카카오톡 안내 켜기</label>
@@ -142,10 +144,12 @@
       const card = document.createElement('div');
       card.className = 'card' + (b.on ? '' : ' off');
       const imgSrc = b.imageData || b.image || '';
+      const isFaq = b.kind === 'faq';
       card.innerHTML = `
         <div class="row">
           <input type="text" class="label-in" data-k="label" value="${esc(b.label)}" placeholder="버튼 문구 (예: 와이파이가 안돼요)" maxlength="30">
-          <label class="toggle"><input type="checkbox" data-k="on" ${b.on ? 'checked' : ''}> 자동 답변 켜기</label>
+          <select data-k="kind" class="kind-in"><option value="request" ${isFaq ? '' : 'selected'}>🛎️ 직원 호출 요청</option><option value="faq" ${isFaq ? 'selected' : ''}>📖 질문·안내 (답만 보여줌)</option></select>
+          <label class="toggle"><input type="checkbox" data-k="on" ${b.on ? 'checked' : ''}> ${isFaq ? '안내 탭에 보이기' : '자동 답변 켜기'}</label>
           <div class="btns">
             <button type="button" data-act="up" ${i === 0 ? 'disabled' : ''}>▲</button>
             <button type="button" data-act="down" ${i === data.guestButtons.length - 1 ? 'disabled' : ''}>▼</button>
@@ -153,7 +157,7 @@
           </div>
         </div>
         <div class="row">
-          <label class="k">자동 답변 내용 (손님에게 바로 보일 글. 비워 두면 안 나감)</label>
+          <label class="k">${isFaq ? '답 내용 (안내 탭에서 질문을 누르면 보이는 글. 비워 두면 채팅 탭의 요청 버튼으로 나감)' : '자동 답변 내용 (손님에게 바로 보일 글. 비워 두면 안 나감)'}</label>
           <textarea data-k="reply" placeholder="예) 와이파이 이름: 벌툰 / 비밀번호: 12345678">${esc(b.reply)}</textarea>
         </div>
         <div class="row">
@@ -165,10 +169,10 @@
           </div>
         </div>
         <div class="row">
-          <label class="k">키워드 (손님이 직접 타자로 쳐도 이 단어가 들어 있으면 자동 답변. 쉼표로 구분)</label>
+          <label class="k">키워드 (손님이 채팅에 직접 타자로 쳐도 이 단어가 들어 있으면 이 답이 자동으로 나감. 쉼표로 구분)</label>
           <input type="text" data-k="keywords" value="${esc((b.keywords || []).join(', '))}" placeholder="예) 와이파이, wifi, 비밀번호">
         </div>
-        ${b.on && (b.reply || '').trim() ? `<div class="row"><label class="k">손님 화면 미리보기 (기본)</label><div class="preview"><span class="tag">💡 자동 안내</span>${esc(b.reply.trim())}${imgSrc ? `<img src="${esc(imgSrc)}" alt="">` : ''}</div></div>` : ''}
+        ${b.on && (b.reply || '').trim() ? `<div class="row"><label class="k">손님 화면 미리보기 (기본)</label><div class="preview"><span class="tag">${isFaq ? '📖 ' + esc(b.label || '질문') : '💡 자동 안내'}</span>${esc(b.reply.trim())}${imgSrc ? `<img src="${esc(imgSrc)}" alt="">` : ''}</div></div>` : ''}
         <div class="variants">
           <span class="k">방마다 다르게 보내기</span>
           <p class="hint">방 종류가 다르면 묶음을 추가하세요. 예: 빔프로젝터 방은 "1-10, 15", TV 방은 "11-14, 16-40". 묶음에 없는 방은 위의 기본 내용이 나갑니다. 글을 비우면 기본 글에 사진만 바꿔 보낼 수도 있습니다.</p>
@@ -182,6 +186,7 @@
         el.oninput = el.onchange = () => {
           const k = el.dataset.k;
           if (k === 'on') { b.on = el.checked; render(); }
+          else if (k === 'kind') { b.kind = el.value; render(); }
           else if (k === 'keywords') b.keywords = el.value.split(',').map((x) => x.trim()).filter(Boolean);
           else b[k] = el.value;
           if (k === 'reply') { const pv = card.querySelector('.preview'); if (pv) pv.childNodes[1].textContent = el.value.trim(); }
@@ -267,7 +272,7 @@
   // ----- 이벤트 안내 카드 -----
   function renderEvent() {
     const ev = data.event = data.event || { on: false, title: '', text: '', link: '', linkLabel: '', image: '' };
-    $('evOn').checked = !!ev.on; $('evFolded').checked = !!ev.folded; $('evTitle').value = ev.title || ''; $('evText').value = ev.text || ''; $('evLink').value = ev.link || ''; $('evLinkLabel').value = ev.linkLabel || '';
+    $('evOn').checked = !!ev.on; $('evTitle').value = ev.title || ''; $('evText').value = ev.text || ''; $('evLink').value = ev.link || ''; $('evLinkLabel').value = ev.linkLabel || '';
     const src = ev.imageData || ev.image || '';
     $('evImg').innerHTML = `${src ? `<img src="${esc(src)}" alt="">` : '<div class="none">사진 없음</div>'}<label class="file">사진 선택<input type="file" accept="image/*" id="evFile"></label>${src ? '<button type="button" id="evImgDel" style="border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;font-size:13px;color:#b91c1c">사진 삭제</button>' : ''}`;
     $('evFile').onchange = (e) => { const f = e.target.files[0]; if (f) shrink(f).then((d) => { ev.imageData = d; renderEvent(); }); };
@@ -279,8 +284,8 @@
     const okLink = /^https?:\/\/\S+$/i.test(ev.link || '');
     $('evPreview').innerHTML = ev.on ? `<div class="evp"><b>${esc(ev.title || '안내')}</b><div class="body">${esc(ev.text || '')}</div>${src ? `<img src="${esc(src)}" alt="">` : ''}${okLink ? `<div class="go">${esc(ev.linkLabel || '자세히 보기')}</div>` : (ev.link ? '<div style="color:#b91c1c;font-size:12px;margin-top:6px">링크는 http:// 또는 https:// 로 시작해야 합니다</div>' : '')}</div>` : '<div style="color:var(--muted);font-size:13px">꺼져 있음 (손님에게 안 보임)</div>';
   }
-  [['evOn', 'on'], ['evFolded', 'folded'], ['evTitle', 'title'], ['evText', 'text'], ['evLink', 'link'], ['evLinkLabel', 'linkLabel']].forEach(([id, k]) => {
-    $(id).oninput = $(id).onchange = () => { data.event[k] = (k === 'on' || k === 'folded') ? $(id).checked : $(id).value; renderEventPreview(); };
+  [['evOn', 'on'], ['evTitle', 'title'], ['evText', 'text'], ['evLink', 'link'], ['evLinkLabel', 'linkLabel']].forEach(([id, k]) => {
+    $(id).oninput = $(id).onchange = () => { data.event[k] = k === 'on' ? $(id).checked : $(id).value; renderEventPreview(); };
   });
 
   // ----- 카카오톡 안내 / 장난 주의 문구 -----
@@ -300,7 +305,7 @@
   });
   [['wnOn', 'on'], ['wnText', 'text']].forEach(([id, k]) => { $(id).oninput = $(id).onchange = () => { data.warning[k] = k === 'on' ? $(id).checked : $(id).value; }; });
 
-  $('addBtn').onclick = () => { data.guestButtons.push({ id: 'b' + Math.random().toString(36).slice(2, 8), label: '', on: false, reply: '', image: '', keywords: [] }); render(); window.scrollTo(0, document.body.scrollHeight); };
+  $('addBtn').onclick = () => { data.guestButtons.push({ id: 'b' + Math.random().toString(36).slice(2, 8), label: '', kind: 'request', on: false, reply: '', image: '', keywords: [] }); render(); window.scrollTo(0, document.body.scrollHeight); };
 
   $('saveBtn').onclick = async () => {
     const msg = $('saveMsg'); msg.className = 'msg'; msg.textContent = '저장 중…';

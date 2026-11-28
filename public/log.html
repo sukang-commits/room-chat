@@ -32,6 +32,8 @@
   .line.guest .who { background: #dbeafe; color: #1d4ed8; }
   .line.staff .who { background: #dcfce7; color: #15803d; }
   .line.auto .who { background: #fef3c7; color: #b45309; }
+  .line.faq { color: var(--muted); font-size: 13px; }   /* 손님이 안내 탭에서 답을 열어 본 기록 */
+  .line.faq .who { background: #fef3c7; color: #b45309; }
   .line.system { color: var(--muted); font-size: 13px; }
   .line.system .who { background: #f3f4f6; color: var(--muted); }
   .line .text { flex: 1; white-space: pre-line; word-break: break-word; }
@@ -79,7 +81,7 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const ymd = (ts) => new Date(ts + KST).toISOString().slice(0, 10);
   const hm = (ts) => new Date(ts + KST).toISOString().slice(11, 16);
-  const WHO = { guest: '손님', staff: '직원', auto: '자동', system: '퇴실' };
+  const WHO = { guest: '손님', staff: '직원', auto: '자동', system: '퇴실', faq: '안내' };
   const todayKST = () => ymd(Date.now());
   let roomsLoaded = false;
   const preRoom = new URLSearchParams(location.search).get('room') || '';   // /admin/log?room=22 로 열면 그 방만

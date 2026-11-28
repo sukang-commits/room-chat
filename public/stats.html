@@ -105,7 +105,7 @@
     $('tiles').innerHTML =
       tile('오늘 손님 메시지', t.today) + tile('최근 7일', t.week) + (d.days !== 7 ? tile(`최근 ${d.days}일`, t.period) : '') + tile('전체 누적', t.all) +
       tile(`${d.days}일간 사용한 방`, t.activeRooms + '<small>/ ' + d.byRoom.length + '개</small>') +
-      tile('자동 답변으로 해결', (t.auto || 0) + '<small>건</small>') + tile('평균 응답 시간', fmtWait(t.avgWait)) + tile('응답 시간 중간값', fmtWait(t.medWait)) + tile('답장 없는 요청', t.unanswered);
+      tile('자동 답변으로 해결', (t.auto || 0) + '<small>건</small>') + tile('안내 탭에서 답 본 횟수', (t.faqViews || 0) + '<small>회</small>') + tile('평균 응답 시간', fmtWait(t.avgWait)) + tile('응답 시간 중간값', fmtWait(t.medWait)) + tile('답장 없는 요청', t.unanswered);
     $('dayRange').textContent = `최근 ${d.days}일`;
     // 눈금: 7일은 "11/22", 30일 이하는 날짜 숫자만(1,6,11…), 그 이상은 달이 바뀌는 날에 "11월"
     const dayItems = d.byDay.map((x) => {
