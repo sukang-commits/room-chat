@@ -39,6 +39,9 @@
   .quick { gap: 6px; padding: 8px 10px 0; }
   .quick button { min-height: 36px; padding: 6px 10px; font-size: 13.5px; border-radius: 10px; }
   .quick:empty { display: none; }
+  /* 채팅 탭에 같이 나오는 질문 버튼: 누르면 안내 탭의 답으로 (직원 호출 아님) */
+  .quick button.faq { background: var(--warn-soft); border-color: #fde68a; color: #92400e; }
+  .quick button.faq::before { content: "📖 "; }
   .warn { margin: 0; padding: 4px 14px 0; font-size: 10.5px; line-height: 1.35; color: #9ca3af; background: var(--card); text-align: center; }
   /* 입력 자동완성: 글을 치기 시작하면 입력칸 위에 추천 문장 */
   .suggest { display: flex; gap: 6px; padding: 6px 10px 0; background: var(--card); overflow-x: auto; scrollbar-width: none; }
@@ -239,6 +242,13 @@
       (buttons || []).forEach((q) => {
         const b = document.createElement('button');
         b.type = 'button'; b.textContent = q.label;
+        b.onclick = () => send(q.label, q.id);
+        $quick.appendChild(b);
+      });
+      // 질문 버튼도 채팅 탭에 같이: 누르면 자동 답변(직원 알림 없음)이 나가고 안내 탭의 그 답으로 이동
+      (faq || []).forEach((q) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'faq'; b.textContent = q.label;
         b.onclick = () => send(q.label, q.id);
         $quick.appendChild(b);
       });
