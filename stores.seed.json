@@ -1,0 +1,10 @@
+{
+  "main": { "name": "벌툰 부천점" },
+  "stores": [
+    { "id": "sinchon",  "name": "벌툰 신촌점", "roomCount": 48 },
+    { "id": "yongin",   "name": "벌툰 용인점", "roomCount": 50 },
+    { "id": "jamsil",   "name": "벌툰 잠실점", "roomCount": 32 },
+    { "id": "beomgye",  "name": "벌툰 범계점", "roomCount": 30 },
+    { "id": "cheolsan", "name": "벌툰 철산점", "roomCount": 38 }
+  ]
+}

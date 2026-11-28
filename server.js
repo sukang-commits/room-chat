@@ -307,13 +307,29 @@ function kstDayStart(ymd) {               // 'YYYY-MM-DD'(한국 날짜) -> 그�
 let registry = {};
 try { registry = JSON.parse(fs.readFileSync(STORES_FILE, 'utf8')); } catch (e) {}
 function saveRegistry() { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(STORES_FILE, JSON.stringify(registry, null, 2)); }
+// ---------- 초기 매장 목록 (stores.seed.json): 서버가 켜질 때 아직 없는 매장을 한 번만 만듦. 지운 매장은 다시 만들지 않음 ----------
+const newPassword = () => { const chars = 'abcdefghjkmnpqrstuvwxyz23456789'; let p = ''; for (let i = 0; i < 8; i++) p += chars[crypto.randomInt(chars.length)]; return p; };
+try {
+  const seed = JSON.parse(fs.readFileSync(path.join(__dirname, 'stores.seed.json'), 'utf8'));
+  registry._seeded = Array.isArray(registry._seeded) ? registry._seeded : [];
+  let changed = false;
+  if (seed.main && seed.main.name && !(registry.main && registry.main.name)) { registry.main = { name: seed.main.name }; changed = true; }
+  for (const st of (seed.stores || [])) {
+    if (!STORE_ID_RE.test(st.id) || RESERVED_IDS.has(st.id) || registry[st.id] || registry._seeded.includes(st.id)) continue;
+    registry[st.id] = { name: st.name, password: newPassword(), roomCount: st.roomCount, roomNames: st.roomNames || null };
+    registry._seeded.push(st.id);
+    changed = true;
+    console.log(`[seed] 매장 생성: ${st.name} (${st.id}, 방 ${st.roomCount}개). 주소와 비밀번호는 /hq 에서 확인`);
+  }
+  if (changed) saveRegistry();
+} catch (e) { if (e.code !== 'ENOENT') console.error('초기 매장 목록을 읽지 못했습니다.', e.message); }
 const newKey = () => crypto.randomBytes(8).toString('base64url').replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 10).padEnd(10, 'x');
 const stores = {};        // 매장 아이디 -> 매장
 const storesByKey = {};   // 주소 코드 -> 매장
 stores.main = createStore('main', { name: (registry.main && registry.main.name) || process.env.STORE_NAME || '벌툰', password: ADMIN_PASSWORD, roomCount: ROOM_COUNT, roomNames: ROOM_NAMES });
 let registryChanged = false;
 for (const [id, cfg] of Object.entries(registry)) {
-  if (id === 'main' || !STORE_ID_RE.test(id) || RESERVED_IDS.has(id)) continue;
+  if (id === 'main' || id.startsWith('_') || !STORE_ID_RE.test(id) || RESERVED_IDS.has(id)) continue;
   if (!cfg.key || !/^[a-z0-9]{10}$/.test(cfg.key)) { cfg.key = newKey(); registryChanged = true; }
   try { stores[id] = createStore(id, cfg); storesByKey[cfg.key] = stores[id]; } catch (e) { console.error(`[${id}] 매장을 불러오지 못했습니다.`, e.message); }
 }
