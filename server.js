@@ -27,12 +27,12 @@ const BUILD_ID = (process.env.RENDER_GIT_COMMIT || '').slice(0, 10) || String(Da
 
 const DEFAULT_SETTINGS = {
   guestButtons: [
-    { id: 'cold', label: '추워요 🥶', kind: 'request', on: false, reply: '', image: '', keywords: [] },
-    { id: 'hot', label: '더워요 🥵', kind: 'request', on: false, reply: '', image: '', keywords: [] },
-    { id: 'noise', label: '시끄러워요 🔇', kind: 'request', on: false, reply: '', image: '', keywords: [] },
-    { id: 'ott', label: 'OTT 어떻게 해요? 📺', kind: 'faq', on: false, reply: '리모컨 사용 순서를 여기에 적어 주세요.\n1. \n2. \n3. \n그래도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['ott', '넷플', '유튜브', '리모컨', '티비', 'tv', '빔프'] },
-    { id: 'adult', label: '성인인증 비밀번호가 뭐예요? 🔑', kind: 'faq', on: false, reply: '성인인증 비밀번호: (여기에 입력)\n입력해도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['성인', '인증', '성인인증', '19금'] },
-    { id: 'wifi', label: '와이파이가 안돼요', kind: 'faq', on: false, reply: '와이파이 이름: (여기에 입력)\n비밀번호: (여기에 입력)\n연결이 계속 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['와이파이', 'wifi', '비밀번호', '비번', '인터넷'] },
+    { id: 'cold', label: '추워요 🥶', kind: 'request', on: false, reply: '', image: '', keywords: ['추워', '춥', '에어컨 꺼', '난방'], suggest: ['너무 추워요', '에어컨 꺼주세요', '난방 올려주세요'] },
+    { id: 'hot', label: '더워요 🥵', kind: 'request', on: false, reply: '', image: '', keywords: ['더워', '덥', '에어컨 켜'], suggest: ['너무 더워요', '에어컨 켜주세요'] },
+    { id: 'noise', label: '시끄러워요 🔇', kind: 'request', on: false, reply: '', image: '', keywords: ['시끄', '소음', '옆방'], suggest: ['옆방이 시끄러워요', '소리가 너무 커요'] },
+    { id: 'ott', label: 'OTT 어떻게 해요? 📺', kind: 'faq', on: false, reply: '리모컨 사용 순서를 여기에 적어 주세요.\n1. \n2. \n3. \n그래도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['ott', '넷플', '유튜브', '리모컨', '티비', 'tv', '빔프'], suggest: ['넷플릭스 어떻게 틀어요', '유튜브 어떻게 봐요', 'OTT 로그인이 안 돼요', '리모컨 어떻게 써요'] },
+    { id: 'adult', label: '성인인증 비밀번호가 뭐예요? 🔑', kind: 'faq', on: false, reply: '성인인증 비밀번호: (여기에 입력)\n입력해도 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['성인', '인증', '성인인증', '19금'], suggest: ['성인인증 비밀번호 뭐예요', '19금 비밀번호 알려주세요'] },
+    { id: 'wifi', label: '와이파이가 안돼요', kind: 'faq', on: false, reply: '와이파이 이름: (여기에 입력)\n비밀번호: (여기에 입력)\n연결이 계속 안 되면 직원이 바로 가겠습니다.', image: '', keywords: ['와이파이', 'wifi', '비밀번호', '비번', '인터넷'], suggest: ['와이파이 비번 뭐예요', '와이파이 비밀번호 알려주세요', '인터넷이 안 돼요'] },
   ],
   staffReplies: ['에어컨 온도 올려드릴게요', '에어컨 온도 낮춰드릴게요', '시끄러운 방 알려주시면 주의 드릴게요', 'OTT 어떤 게 안되실까요?', '바로 가겠습니다', '카운터로 와주세요'],
   // 손님 채팅 맨 위에 항상 보이는 안내 카드 (리뷰 이벤트 등)
@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS = {
   // 카카오톡 채널 안내 (불만·건의는 점장에게) + 장난 주의 문구
   kakao: { on: false, compact: false, title: '직접 말씀하기 어려운 불만이 있다면', text: '카카오톡으로 남겨 주시면 점장이 직접 확인하고 연락드립니다. 매장에서 바로 말하기 어려운 내용도 괜찮습니다.', linkLabel: '불만·건의 남기기 (카카오톡)', link: '' },
   warning: { on: false, text: '허위·장난 요청은 업무방해로 신고될 수 있습니다. 모든 메시지는 접속 기록과 함께 보관됩니다.' },
-  migrations: ['adult-pin', 'kinds'],   // 기본값에는 이미 들어 있으므로 다시 끼워 넣지 않음
+  migrations: ['adult-pin', 'kinds', 'suggest'],   // 기본값에는 이미 들어 있으므로 다시 끼워 넣지 않음
 };
 
 const STORE_ID_RE = /^[a-z0-9][a-z0-9-]{1,19}$/;
@@ -147,6 +147,16 @@ function createStore(id, cfg) {
     S.settings.migrations.push('kinds');
     S.saveSettings();
   }
+  if (hadSaved && !S.settings.migrations.includes('suggest')) {
+    S.settings.guestButtons.forEach((b) => {
+      if (Array.isArray(b.suggest)) return;
+      const d = DEFAULT_SETTINGS.guestButtons.find((x) => x.id === b.id);
+      b.suggest = d ? d.suggest.slice() : [];
+      if (d && !(b.keywords || []).length) b.keywords = d.keywords.slice();   // 요청 버튼에 키워드가 비어 있으면 기본 키워드도
+    });
+    S.settings.migrations.push('suggest');
+    S.saveSettings();
+  }
   // 방에 맞는 답(방 묶음 우선) 찾기
   S.answerFor = (b, roomId) => {
     const v = (b.variants || []).find((x) => (x.roomIds || []).includes(String(roomId)));
@@ -158,8 +168,9 @@ function createStore(id, cfg) {
     const requests = [], faq = [];
     for (const b of S.settings.guestButtons || []) {
       const a = (b.kind || 'request') === 'faq' && b.on ? S.answerFor(b, roomId) : null;
-      if (a && a.text) faq.push({ id: b.id, label: b.label, text: a.text, image: a.image });
-      else requests.push({ id: b.id, label: b.label });
+      const hint = { keywords: b.keywords || [], suggest: b.suggest || [] };   // 채팅 입력 자동완성용
+      if (a && a.text) faq.push({ id: b.id, label: b.label, text: a.text, image: a.image, ...hint });
+      else requests.push({ id: b.id, label: b.label, ...hint });
     }
     return { requests, faq };
   };
@@ -232,6 +243,7 @@ function createStore(id, cfg) {
         id: /^[a-z0-9_-]{1,20}$/i.test(String(b.id || '')) ? String(b.id) : newId('b'),
         label, kind: b.kind === 'faq' ? 'faq' : 'request', on: !!b.on, reply: clean(b.reply, 1000), image: resolveImage(b),
         keywords: (Array.isArray(b.keywords) ? b.keywords : String(b.keywords || '').split(',')).map((k) => clean(k, 20)).filter(Boolean).slice(0, 10),
+        suggest: (Array.isArray(b.suggest) ? b.suggest : String(b.suggest || '').split(',')).map((k) => clean(k, 40)).filter(Boolean).slice(0, 8),
         variants,
       });
     }

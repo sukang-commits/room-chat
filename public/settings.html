@@ -173,6 +173,10 @@
           <label class="k">키워드 (손님이 채팅에 직접 타자로 쳐도 이 단어가 들어 있으면 이 답이 자동으로 나감${isFaq ? ' + 안내 탭의 이 질문으로 바로 이동' : ''}. 쉼표로 구분)</label>
           <input type="text" data-k="keywords" value="${esc((b.keywords || []).join(', '))}" placeholder="예) 와이파이, wifi, 비밀번호">
         </div>
+        <div class="row">
+          <label class="k">자동완성 문구 (손님이 채팅에 글을 치기 시작하면 추천으로 뜨는 문장. 누르면 바로 보내짐. 쉼표로 구분, 최대 8개)</label>
+          <input type="text" data-k="suggest" value="${esc((b.suggest || []).join(', '))}" placeholder="예) 와이파이 비번 뭐예요, 인터넷이 안 돼요">
+        </div>
         ${b.on && (b.reply || '').trim() ? `<div class="row"><label class="k">손님 화면 미리보기 (기본)</label><div class="preview"><span class="tag">${isFaq ? '📖 ' + esc(b.label || '질문') : '💡 자동 안내'}</span>${esc(b.reply.trim())}${imgSrc ? `<img src="${esc(imgSrc)}" alt="">` : ''}</div></div>` : ''}
         <div class="variants">
           <span class="k">방마다 다르게 보내기</span>
@@ -188,7 +192,7 @@
           const k = el.dataset.k;
           if (k === 'on') { b.on = el.checked; render(); }
           else if (k === 'kind') { b.kind = el.value; render(); }
-          else if (k === 'keywords') b.keywords = el.value.split(',').map((x) => x.trim()).filter(Boolean);
+          else if (k === 'keywords' || k === 'suggest') b[k] = el.value.split(',').map((x) => x.trim()).filter(Boolean);
           else b[k] = el.value;
           if (k === 'reply') { const pv = card.querySelector('.preview'); if (pv) pv.childNodes[1].textContent = el.value.trim(); }
         };
@@ -306,7 +310,7 @@
   });
   [['wnOn', 'on'], ['wnText', 'text']].forEach(([id, k]) => { $(id).oninput = $(id).onchange = () => { data.warning[k] = k === 'on' ? $(id).checked : $(id).value; }; });
 
-  $('addBtn').onclick = () => { data.guestButtons.push({ id: 'b' + Math.random().toString(36).slice(2, 8), label: '', kind: 'request', on: false, reply: '', image: '', keywords: [] }); render(); window.scrollTo(0, document.body.scrollHeight); };
+  $('addBtn').onclick = () => { data.guestButtons.push({ id: 'b' + Math.random().toString(36).slice(2, 8), label: '', kind: 'request', on: false, reply: '', image: '', keywords: [], suggest: [] }); render(); window.scrollTo(0, document.body.scrollHeight); };
 
   $('saveBtn').onclick = async () => {
     const msg = $('saveMsg'); msg.className = 'msg'; msg.textContent = '저장 중…';
