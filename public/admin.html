@@ -15,13 +15,12 @@
   .brand .store { font-weight: 600; opacity: .85; font-size: 14px; margin-left: 2px; padding-left: 8px; border-left: 1px solid rgba(255,255,255,.35); }
 
   .menu { position: relative; }
-  .menu-list { position: absolute; right: 0; top: calc(100% + 8px); background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.18); min-width: 220px; z-index: 50; padding: 6px; }
+  .menu-list { position: fixed; right: 10px; top: 60px; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.18); min-width: 220px; z-index: 50; padding: 6px; }
   .menu-list a, .menu-list button { display: block; width: 100%; text-align: left; color: var(--text); background: none; border: 0; padding: 12px 14px; font-size: 15px; font-weight: 600; border-radius: 10px; text-decoration: none; }
   .menu-list a:hover, .menu-list button:hover { background: var(--soft); }
   .menu-list .sep { height: 1px; background: var(--line); margin: 6px 4px; }
   /* 좁은 창에서도 상단 바가 밖으로 밀리지 않게 */
   html, body { overflow-x: hidden; }
-  .appbar { overflow: hidden; }
   .appbar .brand { min-width: 0; overflow: hidden; }
   .appbar .brand h1, .brand .store { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .appbar .badge, .appbar .menu { flex-shrink: 0; }
