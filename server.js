@@ -537,6 +537,19 @@ app.post('/hq/stores/:id/newkey', hqAuth, (req, res) => {
   stores[id] = createStore(id, registry[id]); storesByKey[registry[id].key] = stores[id];
   res.json({ ok: true, store: stores[id].summary() });
 });
+// 기본 매장을 뺀 모든 매장의 비밀번호를 같은 값으로
+app.post('/hq/stores-password', hqAuth, (req, res) => {
+  const password = String((req.body || {}).password || '').trim().slice(0, 60);
+  if (password.length < 4) return res.status(400).json({ error: '비밀번호는 4자 이상이어야 합니다.' });
+  if (password === ADMIN_PASSWORD || isMaster(password)) return res.status(400).json({ error: '기본 매장 비밀번호나 본사 비밀번호와 같을 수 없습니다.' });
+  const changed = [];
+  for (const [id, st] of Object.entries(stores)) {
+    if (st.isMain) continue;
+    st.password = password; registry[id].password = password; changed.push(st.name);
+  }
+  saveRegistry();
+  res.json({ ok: true, changed });
+});
 app.delete('/hq/stores/:id', hqAuth, (req, res) => {
   const id = req.params.id;
   if (id === 'main' || !stores[id]) return res.status(400).json({ error: '지울 수 없는 매장입니다.' });

@@ -45,6 +45,7 @@
 <main class="page">
   <div class="toolbar"><h1>매장 관리</h1></div>
   <p class="help">매장마다 대화·통계·설정·사진·QR 비밀코드·비밀번호가 따로 저장됩니다. 매장 주소에는 추측할 수 없는 무작위 코드가 들어가서, 주소와 비밀번호를 둘 다 아는 사람만 들어갈 수 있습니다. 매장 직원은 자기 매장만, 본사 비밀번호로는 모든 매장에 들어갈 수 있습니다. 기능은 고치면 모든 매장에 한 번에 적용됩니다.</p>
+  <div class="toolbar" style="margin-bottom:10px"><span class="muted" style="font-size:14px;flex:1">기본 매장을 뺀 다른 매장들의 비밀번호를 한 번에 같은 값으로 맞출 수 있습니다.</span><button type="button" class="btn btn-sm" id="allPwBtn">다른 매장 비밀번호 모두 같게 바꾸기</button></div>
   <div class="stores" id="stores"></div>
 
   <h2 style="font-size:18px;margin:0 0 8px">매장 추가</h2>
@@ -108,6 +109,14 @@
       };
     });
   }
+  $('allPwBtn').onclick = async () => {
+    const password = prompt('기본 매장을 뺀 모든 매장에 적용할 비밀번호 (4자 이상, 기본 매장·본사 비밀번호와 달라야 함)');
+    if (!password) return;
+    const r = await fetch('/hq/stores-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+    const j = await r.json();
+    if (!r.ok) { alert(j.error || '실패'); return; }
+    alert(`바뀐 매장: ${j.changed.join(', ')}`); load();
+  };
   $('addForm').onsubmit = async (e) => {
     e.preventDefault();
     const names = $('fNames').value.split('\n').map((x) => x.trim()).filter(Boolean);
