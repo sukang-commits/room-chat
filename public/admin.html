@@ -16,8 +16,15 @@
 
   .menu { position: relative; }
   .menu-list { position: absolute; right: 0; top: calc(100% + 8px); background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.18); min-width: 220px; z-index: 50; padding: 6px; }
-  .menu-list a { display: block; color: var(--text); background: none; padding: 12px 14px; font-size: 15px; font-weight: 600; border-radius: 10px; text-decoration: none; }
-  .menu-list a:hover { background: var(--soft); }
+  .menu-list a, .menu-list button { display: block; width: 100%; text-align: left; color: var(--text); background: none; border: 0; padding: 12px 14px; font-size: 15px; font-weight: 600; border-radius: 10px; text-decoration: none; }
+  .menu-list a:hover, .menu-list button:hover { background: var(--soft); }
+  .menu-list .sep { height: 1px; background: var(--line); margin: 6px 4px; }
+  /* 좁은 창에서도 상단 바가 밖으로 밀리지 않게 */
+  html, body { overflow-x: hidden; }
+  .appbar { overflow: hidden; }
+  .appbar .brand { min-width: 0; overflow: hidden; }
+  .appbar .brand h1, .brand .store { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .appbar .badge, .appbar .menu { flex-shrink: 0; }
   .layout { flex: 1; display: flex; min-height: 0; }
   .sidebar { width: 320px; background: var(--card); border-right: 1px solid var(--line); overflow-y: auto; }
   .search { position: sticky; top: 0; background: var(--card); padding: 10px 12px; border-bottom: 1px solid var(--line); z-index: 1; }
@@ -78,11 +85,12 @@
   <span class="brand"><span class="mark">벌</span><h1>벌툰 채팅</h1></span>
   <span class="badge total" id="total" hidden>0</span>
   <span class="grow"></span>
-  <button class="btn" id="soundBtn" title="매장 음악이 나오는 포스에서는 꺼두세요">🔕 무음</button>
-  <button class="btn" id="testBtn" title="알림창을 테스트합니다">알림 테스트</button>
   <div class="menu">
-    <button class="btn" id="menuBtn">메뉴 ▾</button>
+    <button class="btn" id="menuBtn">☰ 메뉴</button>
     <div class="menu-list" id="menuList" hidden>
+      <button type="button" id="soundBtn" title="매장 음악이 나오는 포스에서는 꺼두세요">🔕 무음</button>
+      <button type="button" id="testBtn" title="알림창을 테스트합니다">🔔 알림 테스트</button>
+      <div class="sep"></div>
       <a href="/admin/log" target="_blank">📋 대화 기록</a>
       <a href="/admin/stats" target="_blank">📊 통계</a>
       <a href="/admin/qr" target="_blank">🖨 QR 인쇄</a>
