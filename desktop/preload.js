@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('bultoonDesktop', {
   alert: () => ipcRenderer.send('bultoon:alert'),
   ack: () => ipcRenderer.send('bultoon:ack'),
+  quit: () => ipcRenderer.send('bultoon:quit'),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (data) => ipcRenderer.invoke('settings:save', data),
 });

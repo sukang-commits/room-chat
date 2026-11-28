@@ -76,6 +76,7 @@ function backToNormal() {
 }
 ipcMain.on('bultoon:alert', () => { bringToFront(); startReRaise(); });
 ipcMain.on('bultoon:ack', () => { stopReRaise(); backToNormal(); });
+ipcMain.on('bultoon:quit', () => { quitting = true; app.quit(); });
 
 // ---------- 설정 창 ----------
 function openSettings() {
@@ -103,6 +104,7 @@ function createTray() {
     { label: '열기', click: () => { if (win) { win.show(); win.focus(); } } },
     { label: '설정 (서버 주소/비밀번호)', click: openSettings },
     { label: '알림 테스트 (맨 위로 올리기)', click: () => { if (win) win.webContents.executeJavaScript("document.getElementById('testBtn').click()").catch(() => {}); } },
+    { label: '화면 새로고침', click: () => { if (win) win.reload(); } },
     { type: 'separator' },
     { label: '종료', click: () => { quitting = true; app.quit(); } },
   ]));
