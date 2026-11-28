@@ -327,7 +327,11 @@ try {
 const newKey = () => crypto.randomBytes(8).toString('base64url').replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 10).padEnd(10, 'x');
 const stores = {};        // 매장 아이디 -> 매장
 const storesByKey = {};   // 주소 코드 -> 매장
-stores.main = createStore('main', { name: (registry.main && registry.main.name) || process.env.STORE_NAME || '벌툰', password: ADMIN_PASSWORD, roomCount: ROOM_COUNT, roomNames: ROOM_NAMES });
+function mainConfig() {
+  const m = registry.main || {};
+  return { name: m.name || process.env.STORE_NAME || '벌툰', password: m.password || ADMIN_PASSWORD, roomCount: m.roomCount || ROOM_COUNT, roomNames: m.roomNames || (m.roomCount ? null : ROOM_NAMES) };
+}
+stores.main = createStore('main', mainConfig());
 let registryChanged = false;
 for (const [id, cfg] of Object.entries(registry)) {
   if (id === 'main' || id.startsWith('_') || !STORE_ID_RE.test(id) || RESERVED_IDS.has(id)) continue;
@@ -379,7 +383,7 @@ function basicPassword(req) {
   return idx < 0 ? '' : Buffer.from(encoded, 'base64').toString().slice(idx + 1);
 }
 // 직원 화면 보호: 그 매장 비밀번호 또는 본사 비밀번호. 매장마다 realm 이 달라 브라우저가 매장별로 따로 기억
-const isMaster = (pw) => !!MASTER_PASSWORD && pw === MASTER_PASSWORD;
+const isMaster = (pw) => !!MASTER_PASSWORD && pw === MASTER_PASSWORD && MASTER_PASSWORD !== stores.main.password;
 function adminAuth(req, res, next) {
   const ip = clientIp(req);
   if (isBlocked(ip)) return res.status(429).send('<meta charset="utf-8">비밀번호를 너무 많이 틀렸습니다. 10분 뒤에 다시 시도하세요.');
@@ -513,8 +517,13 @@ app.post('/hq/stores', hqAuth, (req, res) => {
   const password = String(b.password || '').trim().slice(0, 60);
   const roomNames = Array.isArray(b.roomNames) ? b.roomNames.map((x) => String(x).trim().slice(0, 20)).filter(Boolean).slice(0, 500) : null;
   const roomCount = Math.max(1, Math.min(500, parseInt(b.roomCount, 10) || 0));
-  if (id === 'main') {   // 기본 매장은 이름만 바꿀 수 있음 (비밀번호·방은 Render 환경변수)
-    if (name) { stores.main.name = name; registry.main = { name }; saveRegistry(); }
+  if (id === 'main') {   // 기본 매장: 이름·비밀번호·방 개수 변경 (주소는 그대로, 대화·설정 유지)
+    const m = registry.main || {};
+    if (name) m.name = name;
+    if (password) { if (password.length < 4) return res.status(400).json({ error: '비밀번호는 4자 이상이어야 합니다.' }); if (isMaster(password) || password === MASTER_PASSWORD) return res.status(400).json({ error: '본사 비밀번호와 같을 수 없습니다.' }); m.password = password; }
+    if (roomNames) { m.roomNames = roomNames; delete m.roomCount; } else if (roomCount) { m.roomCount = roomCount; delete m.roomNames; }
+    registry.main = m; saveRegistry();
+    stores.main = createStore('main', mainConfig());
     return res.json({ ok: true, store: stores.main.summary() });
   }
   if (!STORE_ID_RE.test(id) || RESERVED_IDS.has(id)) return res.status(400).json({ error: '매장 아이디는 영문 소문자·숫자·하이픈 2~20자여야 합니다. (예: cheolsan, dongbaek)' });
