@@ -22,13 +22,21 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run build:win
+      - name: 이전 설치 파일 정리 (최신 하나만 남김)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view desktop-latest --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null | while read -r name; do
+            [ -n "$name" ] && gh release delete-asset desktop-latest "$name" --repo "$GITHUB_REPOSITORY" -y || true
+          done
       - name: 설치 파일 업로드 (Release "desktop-latest")
         uses: softprops/action-gh-release@v2
         with:
           tag_name: desktop-latest
           name: 벌툰 채팅 포스용 프로그램 (최신)
           body: |
-            Windows 포스 PC용 설치 파일입니다. `bultoon-chat-setup-*.exe` 를 내려받아 실행하세요.
+            Windows 포스 PC용 설치 파일입니다. 아래 `bultoon-chat-setup-*.exe` 하나만 내려받아 실행하세요.
             손님 메시지가 오면 창이 포스 프로그램 위로 올라옵니다.
           files: desktop/dist/*.exe
           prerelease: false
