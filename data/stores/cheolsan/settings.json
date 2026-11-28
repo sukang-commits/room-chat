@@ -1,0 +1,37 @@
+{
+  "guestButtons": [
+    {
+      "id": "cold",
+      "label": "추워요 🥶",
+      "on": true,
+      "reply": "철산 전용 안내",
+      "image": "/uploads/cheolsan/083bbbddd162f0d9.png",
+      "keywords": [],
+      "variants": []
+    },
+    {
+      "id": "hot",
+      "label": "더워요 🥵",
+      "on": false,
+      "reply": "",
+      "image": "",
+      "keywords": [],
+      "variants": []
+    }
+  ],
+  "staffReplies": [
+    "철산 답장",
+    "카운터로 오세요"
+  ],
+  "event": {
+    "on": true,
+    "title": "철산 이벤트",
+    "text": "철산만",
+    "link": "",
+    "linkLabel": "자세히 보기",
+    "image": ""
+  },
+  "migrations": [
+    "adult-pin"
+  ]
+}

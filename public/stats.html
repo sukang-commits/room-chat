@@ -9,6 +9,8 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <style>
   .page { max-width: 1100px; }
+  .brand .store { font-weight: 600; opacity: .85; font-size: 14px; margin-left: 2px; padding-left: 8px; border-left: 1px solid rgba(255,255,255,.35); }
+
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
   .tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
   .tile .k { font-size: 13px; color: var(--muted); font-weight: 600; }
@@ -74,6 +76,10 @@
 </main>
 
 <script>
+  // 매장 경로: 기본 매장은 '' , 추가 매장은 '/s/매장아이디'
+  const BASE = location.pathname.replace(/\/admin(\/.*)?$/, '');
+  document.querySelectorAll('a[href^="/admin"]').forEach((a) => a.setAttribute('href', BASE + a.getAttribute('href')));
+  function showStoreName(store) { if (!store || !store.name) return; document.title = store.name + ' · ' + document.title; const b = document.querySelector('.brand'); if (b && !b.querySelector('.store')) { const t = document.createElement('span'); t.className = 'store'; t.textContent = store.name; b.appendChild(t); } }
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmtWait = (ms) => ms == null ? '-' : ms < 60000 ? Math.round(ms / 1000) + '<small>초</small>' : ms < 3600000 ? Math.round(ms / 60000) + '<small>분</small>' : (ms / 3600000).toFixed(1) + '<small>시간</small>';
@@ -92,7 +98,8 @@
 
   async function load() {
     const days = $('days').value;
-    const d = await (await fetch('/admin/stats.json?days=' + days)).json();
+    const d = await (await fetch(BASE + '/admin/stats.json?days=' + days)).json();
+    showStoreName(d.store);
     const t = d.totals;
     $('tiles').innerHTML =
       tile('오늘 손님 메시지', t.today) + tile('최근 7일', t.week) + (d.days !== 7 ? tile(`최근 ${d.days}일`, t.period) : '') + tile('전체 누적', t.all) +
@@ -121,7 +128,7 @@
   $('resetBtn').onclick = async () => {
     if (!confirm('모든 방의 대화와 통계 기록을 지울까요?\n되돌릴 수 없습니다.')) return;
     if (prompt('확인을 위해 "삭제"라고 입력하세요') !== '삭제') return;
-    const r = await fetch('/admin/reset', { method: 'POST' });
+    const r = await fetch(BASE + '/admin/reset', { method: 'POST' });
     $('resetMsg').textContent = r.ok ? '삭제됐습니다.' : '실패했습니다. 다시 시도해 주세요.';
     load();
   };

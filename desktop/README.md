@@ -7,6 +7,8 @@
 
 1. GitHub Releases 에서 `bultoon-chat-setup-x.x.x.exe` 를 내려받아 실행합니다.
 2. 처음 켜면 설정 창이 뜹니다. 서버 주소와 직원 비밀번호를 넣고 "저장하고 시작"을 누릅니다.
+   - 기본 매장: 서버 주소 그대로 (예: `https://room-chat-o19j.onrender.com`)
+   - 다른 매장: 뒤에 `/s/매장아이디` (예: `https://room-chat-o19j.onrender.com/s/cheolsan`), 비밀번호는 그 매장 것
 3. 이후에는 Windows 로그인 시 자동으로 켜지고, 창을 닫아도 트레이(오른쪽 아래 아이콘)에 남아 알림을 받습니다.
 
 트레이 아이콘 오른쪽 클릭: 열기 / 설정 / 알림 테스트 / 종료

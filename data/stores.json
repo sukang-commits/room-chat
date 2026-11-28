@@ -1,0 +1,11 @@
+{
+  "cheolsan": {
+    "name": "벌툰 철산점",
+    "password": "5678",
+    "roomCount": 20,
+    "roomNames": null
+  },
+  "main": {
+    "name": "벌툰 부천상동점"
+  }
+}

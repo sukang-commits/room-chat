@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <style>
+  .brand .store { font-weight: 600; opacity: .85; font-size: 14px; margin-left: 2px; padding-left: 8px; border-left: 1px solid rgba(255,255,255,.35); }
   .filters { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; box-shadow: var(--shadow); }
   .filters .preset { display: flex; gap: 6px; flex-wrap: wrap; }
   .filters .preset button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px; font-size: 14px; font-weight: 600; min-height: 40px; }
@@ -68,6 +69,10 @@
 </main>
 
 <script>
+  // 매장 경로: 기본 매장은 '' , 추가 매장은 '/s/매장아이디'
+  const BASE = location.pathname.replace(/\/admin(\/.*)?$/, '');
+  document.querySelectorAll('a[href^="/admin"]').forEach((a) => a.setAttribute('href', BASE + a.getAttribute('href')));
+  function showStoreName(store) { if (!store || !store.name) return; document.title = store.name + ' · ' + document.title; const b = document.querySelector('.brand'); if (b && !b.querySelector('.store')) { const t = document.createElement('span'); t.className = 'store'; t.textContent = store.name; b.appendChild(t); } }
   const $ = (id) => document.getElementById(id);
   const KST = 9 * 3600000;
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -98,8 +103,9 @@
 
   async function load() {
     const qs = params();
-    $('csv').href = '/admin/log.csv?' + qs;
-    const d = await (await fetch('/admin/log.json?' + qs)).json();
+    $('csv').href = BASE + '/admin/log.csv?' + qs;
+    const d = await (await fetch(BASE + '/admin/log.json?' + qs)).json();
+    showStoreName(d.store);
     if (!roomsLoaded) {
       Object.entries(d.roomNames).forEach(([id, name]) => { const o = document.createElement('option'); o.value = id; o.textContent = name; $('room').appendChild(o); });
       roomsLoaded = true;

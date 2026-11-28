@@ -9,6 +9,8 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <style>
   .page { max-width: 880px; padding-bottom: 96px; }
+  .brand .store { font-weight: 600; opacity: .85; font-size: 14px; margin-left: 2px; padding-left: 8px; border-left: 1px solid rgba(255,255,255,.35); }
+
   h2 { font-size: 18px; margin: 30px 0 8px; letter-spacing: -.2px; }
   .help { font-size: 14px; color: var(--muted); line-height: 1.6; margin: 0 0 12px; }
   .card { margin-bottom: 12px; }
@@ -98,6 +100,10 @@
 </div>
 
 <script>
+  // 매장 경로: 기본 매장은 '' , 추가 매장은 '/s/매장아이디'
+  const BASE = location.pathname.replace(/\/admin(\/.*)?$/, '');
+  document.querySelectorAll('a[href^="/admin"]').forEach((a) => a.setAttribute('href', BASE + a.getAttribute('href')));
+  function showStoreName(store) { if (!store || !store.name) return; document.title = store.name + ' · ' + document.title; const b = document.querySelector('.brand'); if (b && !b.querySelector('.store')) { const t = document.createElement('span'); t.className = 'store'; t.textContent = store.name; b.appendChild(t); } }
   const $ = (id) => document.getElementById(id);
   let data = { guestButtons: [], staffReplies: [] };
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -255,14 +261,14 @@
   $('saveBtn').onclick = async () => {
     const msg = $('saveMsg'); msg.className = 'msg'; msg.textContent = '저장 중…';
     const payload = { guestButtons: data.guestButtons, staffReplies: $('staffReplies').value.split('\n'), event: data.event };
-    const r = await fetch('/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const r = await fetch(BASE + '/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await r.json();
     if (!r.ok) { msg.className = 'msg err'; msg.textContent = j.error || '저장 실패'; return; }
     data = j; $('staffReplies').value = data.staffReplies.join('\n'); render(); renderEvent();
     msg.className = 'msg ok'; msg.textContent = '저장됐습니다. 손님·직원 화면에 바로 적용됩니다.';
   };
 
-  fetch('/admin/settings.json').then((r) => r.json()).then((j) => { data = j; $('staffReplies').value = data.staffReplies.join('\n'); render(); renderEvent(); });
+  fetch(BASE + '/admin/settings.json').then((r) => r.json()).then((j) => { data = j; showStoreName(j.store); $('staffReplies').value = data.staffReplies.join('\n'); render(); renderEvent(); });
 </script>
 </body>
 </html>

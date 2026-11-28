@@ -70,18 +70,20 @@
 <div class="grid" id="grid"></div>
 <script>
   const pageStyle = document.createElement('style'); document.head.appendChild(pageStyle);
+  const BASE = location.pathname.replace(/\/admin(\/.*)?$/, '');
   document.getElementById('size').onchange = (e) => {
     const one = e.target.value === 'one';
     document.getElementById('grid').classList.toggle('one', one);
     pageStyle.textContent = one ? '@media print { @page { size: A4 portrait; margin: 10mm; } }' : '';
   };
-  fetch('/admin/config').then((r) => r.json()).then(({ rooms }) => {
+  fetch(BASE + '/admin/config').then((r) => r.json()).then(({ rooms, store }) => {
+    if (store && store.name) document.querySelector('.bar h1').textContent = store.name + ' QR 카드';
     document.getElementById('grid').innerHTML = rooms.map((r) => `
       <div class="card">
         <div class="room">${r.name}</div>
         <h2 class="headline">불편한 점은<br><em>QR</em>로 말씀해 주세요</h2>
         <p class="sub">춥거나, 덥거나, 시끄럽거나, OTT가 안 될 때</p>
-        <div class="qr"><img src="/api/qr/${r.id}.svg" alt="${r.name} QR"></div>
+        <div class="qr"><img src="${BASE}/api/qr/${r.id}.svg" alt="${r.name} QR"></div>
         <ul class="tips">
           <li><span class="ic">📷</span>카메라로 찍으면 바로 채팅창이 열려요</li>
           <li><span class="ic">✓</span>앱 설치나 로그인은 없어요</li>

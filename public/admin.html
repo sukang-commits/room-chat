@@ -12,6 +12,8 @@
 <style>
   body { height: 100dvh; display: flex; flex-direction: column; }
   .appbar h1 { font-size: 17px; margin: 0; font-weight: 800; }
+  .brand .store { font-weight: 600; opacity: .85; font-size: 14px; margin-left: 2px; padding-left: 8px; border-left: 1px solid rgba(255,255,255,.35); }
+
   .menu { position: relative; }
   .menu-list { position: absolute; right: 0; top: calc(100% + 8px); background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.18); min-width: 220px; z-index: 50; padding: 6px; }
   .menu-list a { display: block; color: var(--text); background: none; padding: 12px 14px; font-size: 15px; font-weight: 600; border-radius: 10px; text-decoration: none; }
@@ -127,7 +129,12 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
+  // 매장 경로: 기본 매장은 '' , 추가 매장은 '/s/매장아이디'
+  const BASE = location.pathname.replace(/\/admin(\/.*)?$/, '');
+  document.querySelectorAll('a[href^="/admin"]').forEach((a) => a.setAttribute('href', BASE + a.getAttribute('href')));
+  function showStoreName(store) { if (!store || !store.name) return; document.title = store.name + ' · ' + document.title; const b = document.querySelector('.brand'); if (b && !b.querySelector('.store')) { const t = document.createElement('span'); t.className = 'store'; t.textContent = store.name; b.appendChild(t); } }
   const APP = '벌툰 채팅';
+  let STORE = { id: 'main', name: '' };
   let QUICK = [];   // 직원 빠른 답장 (설정에서 가져옴)
   let rooms = [];          // 요약 목록
   let messages = {};       // roomId -> [msgs]
@@ -298,14 +305,15 @@
   // ---------- 서버 연결 ----------
   const socket = io();
   async function loadConfig() {
-    const cfg = await (await fetch('/admin/config')).json();
+    const cfg = await (await fetch(BASE + '/admin/config')).json();
     password = cfg.password;
+    STORE = cfg.store || STORE; showStoreName(STORE);
     QUICK = cfg.staffReplies || [];
     renderQuick();
   }
   async function join() {
     if (!password) await loadConfig();
-    socket.emit('staff:join', { password }, (res) => {
+    socket.emit('staff:join', { store: STORE.id, password }, (res) => {
       if (res.error) { alert(res.error); return; }
       rooms = res.rooms; messages = res.messages || {};
       renderRooms(); if (current) renderChat();

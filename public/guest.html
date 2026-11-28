@@ -51,7 +51,11 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  const roomId = location.pathname.split('/').pop();
+  // 주소: /r/<코드> (기본 매장) 또는 /s/<매장아이디>/r/<코드>
+  const pathMatch = /^(?:\/s\/([a-z0-9-]+))?\/r\/([^/]+)$/.exec(location.pathname) || [];
+  const STORE = pathMatch[1] || 'main';
+  const BASE = pathMatch[1] ? '/s/' + pathMatch[1] : '';
+  const roomId = pathMatch[2] || '';
 
   const $msgs = document.getElementById('messages');
   const $empty = document.getElementById('empty');
@@ -78,7 +82,7 @@
   // 빠른 버튼과 안내 카드는 서버 설정에서 가져옴 (관리 화면에서 수정 가능)
   async function loadButtons() {
     try {
-      const { buttons, event } = await (await fetch('/api/guest-config')).json();
+      const { buttons, event } = await (await fetch(BASE + '/api/guest-config')).json();
       renderEvent(event);
       $quick.innerHTML = '';
       buttons.forEach((q) => {
@@ -113,10 +117,11 @@
   socket.on('connect', () => {
     $dot.classList.add('on');
     document.getElementById('status').textContent = '직원이 바로 확인합니다';
-    socket.emit('guest:join', { room: roomId }, (res) => {
+    socket.emit('guest:join', { store: STORE, room: roomId }, (res) => {
       if (res.error) { document.getElementById('roomName').textContent = res.error; return; }
       document.getElementById('roomName').textContent = res.room.name + ' 손님';
-      document.title = res.room.name + ' 채팅';
+      document.title = (res.store && res.store.name ? res.store.name + ' ' : '') + res.room.name + ' 채팅';
+      if (res.store && res.store.name) document.getElementById('status').textContent = res.store.name + ' · 직원이 바로 확인합니다';
       $msgs.querySelectorAll('.msg').forEach((e) => e.remove());
       $empty.style.display = res.messages.length ? 'none' : '';
       res.messages.forEach(render);
